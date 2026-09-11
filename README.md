@@ -77,7 +77,7 @@ When mod information is recorded for a world, it uses:
 
 - `<world>/worldbrowser_mods.json`
 
-Backups are written as timestamped ZIP files to the relevant profile's `backups` directory. World Browser does not upload these files or send them to an external service.
+Backups are written as timestamped ZIP files to the relevant profile's `backups` directory.
 
 ## Compatibility notes
 
