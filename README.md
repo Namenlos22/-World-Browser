@@ -105,11 +105,4 @@ When reporting a problem, include:
 - relevant log output, and
 - steps that reproduce the issue.
 
-Do not upload private worlds or configuration files unless you have reviewed their contents.
-
-## License
-
-World Browser is released under [CC0 1.0 Universal](LICENSE).
-
-This project is not affiliated with or endorsed by Mojang Studios, Microsoft, Modrinth, or CurseForge.
 
