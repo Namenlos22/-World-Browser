@@ -1,0 +1,27 @@
+{
+	"schemaVersion": 1,
+	"id": "worldbrowser",
+	"version": "${version}",
+	"name": "World Browser",
+	"description": "Durchsucht Welten aus allen Launcher-Installationen (Vanilla, Modrinth, CurseForge) direkt im Singleplayer-Menü.",
+	"authors": [
+		"World Browser"
+	],
+	"license": "MIT",
+	"icon": "assets/worldbrowser/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"com.example.worldbrowser.WorldBrowser"
+		]
+	},
+	"mixins": [
+		"worldbrowser.mixins.json"
+	],
+	"depends": {
+		"fabricloader": ">=0.19.5",
+		"fabric-resource-loader-v1": "*",
+		"minecraft": ">=26.2 <27",
+		"java": ">=25"
+	}
+}

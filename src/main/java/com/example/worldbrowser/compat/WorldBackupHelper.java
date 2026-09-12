@@ -1,0 +1,75 @@
+package com.example.worldbrowser.compat;
+
+import com.example.worldbrowser.WorldBrowser;
+import com.example.worldbrowser.model.ProfileInfo;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.FileVisitResult;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
+
+public class WorldBackupHelper {
+    private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss");
+
+    public static Path createBackup(Path worldDir, ProfileInfo profile) throws IOException {
+        if (worldDir == null || !Files.isDirectory(worldDir)) {
+            throw new IOException("Welt-Verzeichnis existiert nicht: " + worldDir);
+        }
+
+        String worldName = worldDir.getFileName().toString();
+        Path backupDir;
+
+        if (profile != null && profile.getGameDir() != null) {
+            backupDir = profile.getGameDir().resolve("backups");
+        } else if (worldDir.getParent() != null && worldDir.getParent().getParent() != null) {
+            backupDir = worldDir.getParent().getParent().resolve("backups");
+        } else {
+            backupDir = worldDir.resolveSibling("backups");
+        }
+
+        Files.createDirectories(backupDir);
+
+        String timestamp = LocalDateTime.now().format(FORMATTER);
+        String zipName = sanitizeFileName(worldName) + "_" + timestamp + ".zip";
+        Path zipFile = backupDir.resolve(zipName);
+
+        try (ZipOutputStream zos = new ZipOutputStream(Files.newOutputStream(zipFile))) {
+            Files.walkFileTree(worldDir, new SimpleFileVisitor<>() {
+                @Override
+                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                    // Skip session.lock to avoid sharing violation
+                    if (file.getFileName().toString().equals("session.lock")) {
+                        return FileVisitResult.CONTINUE;
+                    }
+
+                    Path relative = worldDir.relativize(file);
+                    ZipEntry entry = new ZipEntry(relative.toString().replace('\\', '/'));
+                    entry.setTime(attrs.lastModifiedTime().toMillis());
+                    zos.putNextEntry(entry);
+
+                    try (InputStream is = Files.newInputStream(file)) {
+                        is.transferTo(zos);
+                    } catch (Exception e) {
+                        WorldBrowser.LOGGER.warn("Konnte Datei {} nicht ins Backup packen: {}", file, e.getMessage());
+                    }
+                    zos.closeEntry();
+                    return FileVisitResult.CONTINUE;
+                }
+            });
+        }
+
+        WorldBrowser.LOGGER.info("Welt-Backup erfolgreich erstellt: {}", zipFile);
+        return zipFile;
+    }
+
+    private static String sanitizeFileName(String name) {
+        return name.replaceAll("[^a-zA-Z0-9._-]", "_");
+    }
+}
