@@ -35,7 +35,6 @@ World Browser turns the standard world list into a folder-style browser. It disc
 3. Place the World Browser JAR in the instance's `mods` folder.
 4. Start Minecraft and open **Singleplayer**.
 
-Install World Browser in every launcher profile from which you want to use its browser and safety checks.
 
 ## Usage
 
@@ -46,7 +45,7 @@ Open the normal singleplayer menu. The controls beside the search field let you:
 - return to the current profile, and
 - clear recent external-world shortcuts.
 
-Select a launcher, then a profile, then a world. External worlds are marked in the list. Click a compatibility badge to inspect the detailed mod comparison.
+
 
 If World Browser detects missing or mismatched mods, it asks whether you want to:
 
