@@ -115,7 +115,7 @@ public class ModCompatibilityChecker {
     }
 
     private static boolean isSystemMod(String id) {
-        // Die Mod-ID des Fabric Loaders ist "fabricloader" (ohne Bindestrich)
+
         return id.equals("minecraft") || id.equals("java") || id.startsWith("fabricloader");
     }
 
