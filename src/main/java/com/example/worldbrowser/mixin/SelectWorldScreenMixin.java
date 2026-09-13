@@ -37,8 +37,6 @@ public abstract class SelectWorldScreenMixin extends Screen implements WorldBrow
 
     @Inject(method = "init", at = @At("HEAD"))
     private void worldbrowser_onInitHead(CallbackInfo ci) {
-        // Nur scannen wenn der Hintergrund-Scan noch nicht durch ist - sonst bloeckt
-        // jedes Screen-Init den Render-Thread mit einem kompletten Profil-Rescan.
         if (!WorldBrowserRegistry.getInstance().isInitialized()) {
             WorldBrowserRegistry.getInstance().reload();
         }
@@ -46,7 +44,6 @@ public abstract class SelectWorldScreenMixin extends Screen implements WorldBrow
 
     @Inject(method = "init", at = @At("TAIL"))
     private void worldbrowser_onInitTail(CallbackInfo ci) {
-        // Litematica-style navigation buttons: [ 📁/ ] [ 📁⮤ ] [ 📁+ ] [ 📁✕ ]
         this.worldbrowser_rootButton = new FolderNavButton(
                 0, 0, 20, 20,
                 FolderNavButton.Type.ROOT,
@@ -175,7 +172,6 @@ public abstract class SelectWorldScreenMixin extends Screen implements WorldBrow
         this.searchBox.setY(rowY);
         this.searchBox.setWidth(searchBoxW);
 
-        // Update path hint & button active states
         NavigationState state = WorldBrowserRegistry.getInstance().getNavigationState();
         Component pathHint = state.getPathHint().copy().withStyle(ChatFormatting.GRAY);
         this.searchBox.setHint(pathHint);
