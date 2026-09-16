@@ -6,8 +6,8 @@ World Browser turns the standard world list into a folder-style browser. It disc
 
 > [!WARNING]
 > Opening a world with a different Minecraft version or mod set can still damage it. Compatibility checks and backups reduce risk, but cannot guarantee that a world is safe to load.
->
-> ## Downloads
+
+## Downloads
 
 - [Modrinth](https://modrinth.com/mod/world-browser)
 - [CurseForge](https://www.curseforge.com/minecraft/mc-mods/world-browser)
