@@ -38,8 +38,7 @@ public abstract class WorldSelectionListMixin extends ObjectSelectionList<WorldS
         super(minecraft, width, height, y, itemHeight);
     }
 
-    // Vanilla leitet bei leerer saves/-Liste direkt auf den Create-New-World-Screen
-    // weiter, bevor fillLevels läuft. Gibt es woanders Welten, stattdessen den Browser füllen.
+    // Vanilla redirects empty saves directly to Create New World screen; show browser if external worlds exist
     @Inject(method = "handleNewLevels", at = @At("HEAD"), cancellable = true)
     private void worldbrowser_onHandleNewLevels(List<LevelSummary> summaries, CallbackInfo ci) {
         if (summaries == null || !summaries.isEmpty()) return;
@@ -51,9 +50,7 @@ public abstract class WorldSelectionListMixin extends ObjectSelectionList<WorldS
         this.currentlyDisplayedLevels = summaries;
     }
 
-    // Reloads von leeren saves/ liefern immer dieselbe Empty-List-Instanz - Vanillas
-    // Referenzvergleich in extractWidgetRenderState ruft handleNewLevels dann nicht mehr
-    // auf und die Liste bliebe stehen. Deshalb hier direkt neu fuellen.
+    // Empty saves reload returns the same empty list instance; repopulate explicitly to update UI
     @Inject(method = "reloadWorldList", at = @At("TAIL"))
     private void worldbrowser_onReloadWorldList(CallbackInfo ci) {
         if (this.entryType != WorldSelectionList.EntryType.SINGLEPLAYER) return;
@@ -62,7 +59,7 @@ public abstract class WorldSelectionListMixin extends ObjectSelectionList<WorldS
 
     @Inject(method = "fillLevels", at = @At("HEAD"), cancellable = true)
     private void worldbrowser_onFillLevels(String filter, List<LevelSummary> summaries, CallbackInfo ci) {
-        // Sonst landen unsere Ordner-Eintraege auch in der Realms-Upload-Liste
+        // Prevent folder entries from leaking into Realms upload screen
         if (this.entryType != WorldSelectionList.EntryType.SINGLEPLAYER) return;
         ci.cancel();
         worldbrowser_fillBrowser(filter);
@@ -79,7 +76,7 @@ public abstract class WorldSelectionListMixin extends ObjectSelectionList<WorldS
 
         String cleanFilter = filter != null ? filter.trim().toLowerCase() : "";
 
-        // Suche bei Texteingabe
+        // Filtered search across active level or entire launcher/registry
         if (!cleanFilter.isEmpty()) {
             if (state.isProfile()) {
                 ProfileInfo profile = state.getSelectedProfile();
@@ -106,7 +103,7 @@ public abstract class WorldSelectionListMixin extends ObjectSelectionList<WorldS
             return;
         }
 
-        // Ebene 0: Launcher-Auswahl (Root)
+        // Root level: launcher selection
         if (state.isRoot()) {
             for (LauncherType launcher : LauncherType.values()) {
                 int profileCount = registry.getProfilesForLauncher(launcher).size();
@@ -128,7 +125,7 @@ public abstract class WorldSelectionListMixin extends ObjectSelectionList<WorldS
                 }));
             }
         } 
-        // Ebene 1: Profil-Auswahl des aktiven Launchers
+        // Launcher level: profile selection
         else if (state.isLauncher()) {
             LauncherType launcher = state.getSelectedLauncher();
             this.addEntry(new BackFolderEntry(this.minecraft, Component.translatable("worldbrowser.path.all_launchers"), () -> {
@@ -150,7 +147,7 @@ public abstract class WorldSelectionListMixin extends ObjectSelectionList<WorldS
                     title = title.copy().append(Component.translatable("worldbrowser.folder.current_tag").withStyle(ChatFormatting.GREEN));
                 }
 
-                Component subtitle = Component.translatable("worldbrowser.folder.stats_profile", worldCount, profile.getMods().size(), profile.getLastVersionId())
+                Component subtitle = Component.translatable("worldbrowser.folder.stats_profile", worldCount, profile.getModCount(), profile.getLastVersionId())
                         .withStyle(ChatFormatting.GRAY);
 
                 this.addEntry(new FolderListEntry(this.minecraft, title, subtitle, () -> {
@@ -164,7 +161,7 @@ public abstract class WorldSelectionListMixin extends ObjectSelectionList<WorldS
                 }));
             }
         } 
-        // Ebene 2: Welten-Auswahl des aktiven Profils
+        // Profile level: world selection
         else if (state.isProfile()) {
             ProfileInfo profile = state.getSelectedProfile();
             Component backTarget = state.getSelectedLauncher() != null ? state.getSelectedLauncher().getComponent() : Component.translatable("worldbrowser.path.all_launchers");

@@ -49,25 +49,21 @@ public class BackFolderEntry extends WorldSelectionList.Entry {
         int fx = x + 2;
         int fy = y + 2;
 
-        // Folder base
         extractor.fill(fx + 2, fy + 2, fx + 12, fy + 8, 0xFFFFA000);
         extractor.fill(fx + 2, fy + 6, fx + 28, fy + 26, 0xFFFFB300);
         extractor.fill(fx, fy + 10, fx + 28, fy + 26, 0xFFFFD54F);
         extractor.fill(fx + 1, fy + 11, fx + 27, fy + 12, 0xFFFFF9C4);
 
-        // Arrow pointing up
         extractor.fill(fx + 13, fy + 13, fx + 15, fy + 23, 0xFF37474F);
         extractor.fill(fx + 11, fy + 15, fx + 17, fy + 17, 0xFF37474F);
         extractor.fill(fx + 9, fy + 17, fx + 19, fy + 19, 0xFF37474F);
 
-        // Outer borders
         extractor.fill(fx + 1, fy + 1, fx + 13, fy + 2, 0xFF795548);
         extractor.fill(fx + 1, fy + 5, fx + 29, fy + 6, 0xFF795548);
         extractor.fill(fx + 28, fy + 6, fx + 29, fy + 26, 0xFF795548);
         extractor.fill(fx + 1, fy + 26, fx + 29, fy + 27, 0xFF795548);
         extractor.fill(fx, fy + 10, fx + 1, fy + 26, 0xFF795548);
 
-        // Vertically centered text with NO redundant subtitle
         int textX = x + 35;
         extractor.textRenderer().accept(textX, y + 13, title);
     }

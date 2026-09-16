@@ -40,7 +40,6 @@ public class WorldCompatibilityWarningScreen extends Screen {
         super.init();
         int centerX = this.width / 2;
 
-        // Title
         StringWidget titleWidget = new StringWidget(
                 centerX - 150, 25, 300, 20,
                 Component.translatable("worldbrowser.warning.compat.title").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD),
@@ -48,7 +47,6 @@ public class WorldCompatibilityWarningScreen extends Screen {
         );
         this.addRenderableWidget(titleWidget);
 
-        // Warning text
         String pName = profile != null ? profile.getDisplayName() : "Unknown";
         Component intro = Component.translatable("worldbrowser.warning.compat.message", pName);
         Component details = Component.empty();
@@ -67,14 +65,12 @@ public class WorldCompatibilityWarningScreen extends Screen {
         messageWidget.setMaxWidth(340);
         this.addRenderableWidget(messageWidget);
 
-        // Button: Details anzeigen
         this.addRenderableWidget(
                 Button.builder(Component.translatable("worldbrowser.modlist.title", worldName), btn -> {
                     this.minecraft.setScreenAndShow(new WorldModListScreen(this, worldDir, profile, result));
                 }).bounds(centerX - 150, this.height - 110, 300, 20).build()
         );
 
-        // Button: Backup erstellen & Starten
         this.addRenderableWidget(
                 Button.builder(Component.translatable("worldbrowser.warning.compat.backup_and_play").withStyle(ChatFormatting.GREEN), btn -> {
                     try {
@@ -85,20 +81,18 @@ public class WorldCompatibilityWarningScreen extends Screen {
                                     Component.empty());
                         }
                     } catch (Exception e) {
-                        WorldBrowser.LOGGER.error("Fehler beim Erstellen des Backups: {}", e.getMessage());
+                        WorldBrowser.LOGGER.error("Failed to create backup: {}", e.getMessage());
                     }
                     onProceed.run();
                 }).bounds(centerX - 150, this.height - 85, 300, 20).build()
         );
 
-        // Button: Trotzdem starten
         this.addRenderableWidget(
                 Button.builder(Component.translatable("worldbrowser.warning.compat.play_anyway").withStyle(ChatFormatting.RED), btn -> {
                     onProceed.run();
                 }).bounds(centerX - 150, this.height - 60, 145, 20).build()
         );
 
-        // Button: Abbrechen
         this.addRenderableWidget(
                 Button.builder(CommonComponents.GUI_CANCEL, btn -> this.minecraft.setScreenAndShow(parentScreen))
                         .bounds(centerX + 5, this.height - 60, 145, 20)

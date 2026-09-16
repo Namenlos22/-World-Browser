@@ -44,8 +44,7 @@ public abstract class WorldListEntryMixin {
 
     @Shadow public abstract void joinWorld();
 
-    // Zeile 2 des Eintrags zeigt sonst die interne wb_-Kennung - fuer externe
-    // Welten den echten Ordnernamen anzeigen
+    // Display actual world directory name for external worlds instead of internal redirected ID
     @Inject(method = "<init>", at = @At("TAIL"))
     private void worldbrowser_fixIdLine(WorldSelectionList list, WorldSelectionList selectionList, LevelSummary summary, CallbackInfo ci) {
         if (!(summary instanceof WrappedLevelSummary wrapped)
@@ -87,14 +86,14 @@ public abstract class WorldListEntryMixin {
         if (rw != null) {
             Path worldDir = rw.worldDir();
 
-            // 1. Dateisperre (session.lock) Prüfung
+            // 1. Session lock check
             if (WorldLockHelper.isWorldLocked(worldDir)) {
                 ci.cancel();
                 this.minecraft.setScreenAndShow(new WorldLockedWarningScreen(this.screen, summary.getLevelName()));
                 return;
             }
 
-            // 2. Mod-Kompatibilitätsprüfung
+            // 2. Mod compatibility check
             ModCompatibilityResult compatResult = rw.summary().getCompatibilityResult();
             if (compatResult != null && !compatResult.isFullyCompatible()) {
                 boolean alreadyConfirmed = WorldBrowserRegistry.getInstance().isWorldCompatibilityConfirmed(worldDir);
@@ -120,7 +119,7 @@ public abstract class WorldListEntryMixin {
                 }
             }
 
-            // Record as recent external world
+            // Record as recent external world shortcut for current profile
             if (rw.profile() != null && !rw.profile().isCurrent()) {
                 WorldBrowserRegistry.getInstance().recordRecentWorld(worldDir, rw.profile());
             }
@@ -189,10 +188,8 @@ public abstract class WorldListEntryMixin {
             boolean isExternal = wrapped.getProfile() != null && !wrapped.getProfile().isCurrent();
 
             if (isExternal) {
-                // 1. Golden accent bar on the far left edge
                 extractor.fill(x, y + 1, x + 2, y + 33, 0xFFFFB300);
 
-                // 2. Mini folder badge on the thumbnail bottom-right
                 extractor.fill(x + 23, y + 23, x + 27, y + 25, 0xFFFF8F00);
                 extractor.fill(x + 22, y + 25, x + 32, y + 31, 0xFFFFB300);
                 extractor.fill(x + 22, y + 27, x + 32, y + 31, 0xFFFFD54F);
@@ -201,7 +198,7 @@ public abstract class WorldListEntryMixin {
 
             int rightX = x + width - 8;
 
-            // Line 1: Status badges (Lock or Mod Compatibility)
+            // Status badges (Locked or Mod Compatibility)
             if (wrapped.isLocked()) {
                 Component badge = WorldLockHelper.getLockedBadge();
                 int badgeWidth = this.minecraft.font.width(badge);
@@ -238,7 +235,6 @@ public abstract class WorldListEntryMixin {
                 }
             }
 
-            // Line 1: [Extern] / [External] badge
             if (isExternal) {
                 Component extBadge = Component.translatable("worldbrowser.badge.external")
                         .withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD);
@@ -246,7 +242,6 @@ public abstract class WorldListEntryMixin {
                 rightX -= extWidth;
                 extractor.textRenderer().accept(rightX, y + 2, extBadge);
 
-                // Tooltip on hover over [Extern] badge
                 if (isHovered && mouseX >= rightX && mouseX <= rightX + extWidth && mouseY >= y && mouseY <= y + 15) {
                     Component tooltipText = Component.translatable("worldbrowser.tooltip.origin_path",
                             wrapped.getWorldDir().toAbsolutePath().normalize().toString())

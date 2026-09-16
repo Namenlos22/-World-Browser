@@ -84,12 +84,12 @@ public class NavigationState {
             Component launcherComp = selectedLauncher != null ? selectedLauncher.getComponent() : (selectedProfile.getLauncherType() != null ? selectedProfile.getLauncherType().getComponent() : Component.literal("Launcher"));
             return launcherComp.copy().append(" / " + selectedProfile.getDisplayName());
         }
-        return Component.literal("Welten-Browser");
+        return Component.literal("World Browser");
     }
 
     public String getPathString() {
         if (isRoot()) {
-            return "Alle Launcher";
+            return "All Launchers";
         }
         if (isLauncher() && selectedLauncher != null) {
             return selectedLauncher.getDisplayName();
@@ -98,7 +98,7 @@ public class NavigationState {
             String launcherName = selectedLauncher != null ? selectedLauncher.getDisplayName() : (selectedProfile.getLauncherType() != null ? selectedProfile.getLauncherType().getDisplayName() : "Launcher");
             return launcherName + " / " + selectedProfile.getDisplayName();
         }
-        return "Welten-Browser";
+        return "World Browser";
     }
 
     public Component getBreadcrumbComponent() {

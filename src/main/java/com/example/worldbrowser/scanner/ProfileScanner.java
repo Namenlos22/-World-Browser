@@ -43,12 +43,12 @@ public class ProfileScanner {
             ProfileInfo currentProfile = new ProfileInfo(
                     LauncherType.CURRENT,
                     "current",
-                    "Aktuelles Spielverzeichnis",
+                    "Current Game Directory",
                     currentGameDir,
                     currentSaves,
                     currentMods,
                     null,
-                    "aktuell",
+                    "Current",
                     true
             );
             rawProfiles.add(0, currentProfile);
@@ -77,7 +77,7 @@ public class ProfileScanner {
             }
         }
 
-        WorldBrowser.LOGGER.info("Gefundene Profile insgesamt (dedupliziert): {}", deduplicated.size());
+        WorldBrowser.LOGGER.info("Total profiles discovered (deduplicated): {}", deduplicated.size());
         return deduplicated;
     }
 
@@ -144,7 +144,7 @@ public class ProfileScanner {
                         }
                     }
                 } catch (Exception e) {
-                    WorldBrowser.LOGGER.warn("Fehler beim Lesen von {}: {}", profilesJson, e.getMessage());
+                    WorldBrowser.LOGGER.warn("Failed to read {}: {}", profilesJson, e.getMessage());
                 }
             }
 
@@ -157,12 +157,12 @@ public class ProfileScanner {
                     ProfileInfo defaultProfile = new ProfileInfo(
                             LauncherType.VANILLA,
                             "default",
-                            "Standard .minecraft",
+                            "Default .minecraft",
                             mcDir,
                             savesDir,
                             modsDir,
                             null,
-                            "Standard",
+                            "Default",
                             isCurrent
                     );
                     profiles.add(defaultProfile);
@@ -204,7 +204,7 @@ public class ProfileScanner {
                     profiles.add(profile);
                 }
             } catch (Exception e) {
-                WorldBrowser.LOGGER.warn("Fehler beim Durchsuchen von Modrinth {}: {}", root, e.getMessage());
+                WorldBrowser.LOGGER.warn("Failed to scan Modrinth directory {}: {}", root, e.getMessage());
             }
         }
     }
@@ -261,7 +261,7 @@ public class ProfileScanner {
                     profiles.add(profile);
                 }
             } catch (Exception e) {
-                WorldBrowser.LOGGER.warn("Fehler beim Durchsuchen von CurseForge {}: {}", root, e.getMessage());
+                WorldBrowser.LOGGER.warn("Failed to scan CurseForge directory {}: {}", root, e.getMessage());
             }
         }
     }

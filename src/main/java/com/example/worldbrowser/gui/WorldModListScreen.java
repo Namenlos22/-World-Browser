@@ -41,17 +41,14 @@ public class WorldModListScreen extends Screen {
         int listBottom = this.height - 45;
         int listHeight = listBottom - listTop;
 
-        // Search Box
         this.searchBox = new EditBox(this.font, this.width / 2 - 150, 26, 300, 18, Component.translatable("worldbrowser.modlist.search"));
         this.searchBox.setResponder(this::onSearchChanged);
         this.addRenderableWidget(this.searchBox);
 
-        // List
         this.modSelectionList = new ModSelectionList(this.minecraft, this.width, listHeight, listTop, 24);
         this.addRenderableWidget(this.modSelectionList);
         populateList("");
 
-        // Back Button
         this.addRenderableWidget(
                 Button.builder(CommonComponents.GUI_BACK, btn -> this.minecraft.setScreenAndShow(parentScreen))
                         .bounds(this.width / 2 - 100, this.height - 35, 200, 20)
@@ -79,7 +76,6 @@ public class WorldModListScreen extends Screen {
         extractor.fill(0, 0, this.width, this.height, 0xD0000000);
         super.extractRenderState(extractor, mouseX, mouseY, tickDelta);
 
-        // Header Title
         String profileName = profile != null ? profile.getDisplayName()
                 : Component.translatable("worldbrowser.modlist.unknown_profile").getString();
         Component titleComp = Component.translatable("worldbrowser.modlist.title",
@@ -138,19 +134,19 @@ public class WorldModListScreen extends Screen {
                 extractor.fill(x, y, x + width, y + height, 0x20FFFFFF);
             }
 
-            // Status symbol & name
+            // Status symbol and name
             ModCompatibilityStatus status = entry.getStatus();
             Component nameComp = Component.literal(status.getSymbol() + " ")
                     .withStyle(status.getColor())
                     .append(Component.literal(entry.getModName()).withStyle(ChatFormatting.WHITE));
             extractor.textRenderer().accept(x + 5, y + 2, nameComp);
 
-            // Status badge on right side - mit Abstand zum Scrollbar, sonst abgeschnitten
+            // Offset badge from right edge to leave clearance for scrollbar
             Component badge = status.getFormattedComponent();
             int badgeWidth = minecraft.font.width(badge);
             int badgeX = x + width - badgeWidth - 14;
 
-            // Subtitle / Version details - auf den Bereich vor dem Badge beschraenkt
+            // Restrict version details width to avoid overlapping the badge
             Component versionDetails;
             if (status == ModCompatibilityStatus.MISSING_IN_CURRENT) {
                 versionDetails = Component.translatable("worldbrowser.modlist.entry.missing",
@@ -173,7 +169,7 @@ public class WorldModListScreen extends Screen {
             extractor.textRenderer().accept(x + 18, y + 13, versionDetails);
             extractor.disableScissor();
 
-            // Bei Hover den vollen (ggf. abgeschnittenen) Text als Tooltip zeigen
+            // Show full details in tooltip when text is truncated
             int detailMaxWidth = badgeX - 4 - (x + 18);
             int nameMaxWidth = badgeX - 4 - (x + 5);
             if (isHovered && (minecraft.font.width(versionDetails) > detailMaxWidth

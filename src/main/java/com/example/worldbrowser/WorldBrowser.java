@@ -10,18 +10,21 @@ import org.slf4j.LoggerFactory;
 public class WorldBrowser implements ModInitializer {
 	public static final String MOD_ID = "worldbrowser";
 
-	// This logger is used to write text to the console and the log file.
-	// It is considered best practice to use your mod id as the logger's name.
-	// That way, it's clear which mod wrote info, warnings, and errors.
 	public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
 
 	@Override
 	public void onInitialize() {
-		LOGGER.info("World Browser initialisiert! Starte Profil- und Welten-Erkennung...");
-		// Vorab-Scan im Hintergrund starten für sofortige Verfügbarkeit im Menü
-		new Thread(() -> {
-			com.example.worldbrowser.registry.WorldBrowserRegistry.getInstance().reload();
-		}, "WorldBrowser-Scanner").start();
+		LOGGER.info("WorldBrowser initialized.");
+
+		// Discover profiles and pre-warm folder counts in background
+		Thread scannerThread = new Thread(() -> {
+			com.example.worldbrowser.registry.WorldBrowserRegistry registry =
+					com.example.worldbrowser.registry.WorldBrowserRegistry.getInstance();
+			registry.reload();
+			registry.prewarmProfileCounts();
+		}, "WorldBrowser-Scanner");
+		scannerThread.setDaemon(true);
+		scannerThread.start();
 	}
 
 	public static Identifier id(String path) {

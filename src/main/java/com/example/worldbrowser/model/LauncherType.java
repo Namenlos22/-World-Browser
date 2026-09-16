@@ -3,10 +3,10 @@ package com.example.worldbrowser.model;
 import net.minecraft.network.chat.Component;
 
 public enum LauncherType {
-    VANILLA("Vanilla Minecraft", "Standard .minecraft Launcher-Profile", "vanilla"),
-    MODRINTH("Modrinth App", "Modrinth App Profile und Instanzen", "modrinth"),
-    CURSEFORGE("CurseForge", "CurseForge Minecraft Instanzen", "curseforge"),
-    CURRENT("Aktuelles Profil", "Das aktuell laufende Minecraft-Profil", "current");
+    VANILLA("Vanilla Minecraft", "Standard .minecraft launcher profiles", "vanilla"),
+    MODRINTH("Modrinth App", "Modrinth App profiles and instances", "modrinth"),
+    CURSEFORGE("CurseForge", "CurseForge Minecraft instances", "curseforge"),
+    CURRENT("Current Profile", "The currently running Minecraft profile", "current");
 
     private final String displayName;
     private final String description;

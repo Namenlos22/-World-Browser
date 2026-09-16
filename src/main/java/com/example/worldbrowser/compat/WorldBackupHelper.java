@@ -20,7 +20,7 @@ public class WorldBackupHelper {
 
     public static Path createBackup(Path worldDir, ProfileInfo profile) throws IOException {
         if (worldDir == null || !Files.isDirectory(worldDir)) {
-            throw new IOException("Welt-Verzeichnis existiert nicht: " + worldDir);
+            throw new IOException("World directory does not exist: " + worldDir);
         }
 
         String worldName = worldDir.getFileName().toString();
@@ -44,7 +44,7 @@ public class WorldBackupHelper {
             Files.walkFileTree(worldDir, new SimpleFileVisitor<>() {
                 @Override
                 public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-                    // Skip session.lock to avoid sharing violation
+                    // Skip session.lock to avoid file-in-use sharing violations
                     if (file.getFileName().toString().equals("session.lock")) {
                         return FileVisitResult.CONTINUE;
                     }
@@ -57,7 +57,7 @@ public class WorldBackupHelper {
                     try (InputStream is = Files.newInputStream(file)) {
                         is.transferTo(zos);
                     } catch (Exception e) {
-                        WorldBrowser.LOGGER.warn("Konnte Datei {} nicht ins Backup packen: {}", file, e.getMessage());
+                        WorldBrowser.LOGGER.warn("Failed to add file {} to backup: {}", file, e.getMessage());
                     }
                     zos.closeEntry();
                     return FileVisitResult.CONTINUE;
@@ -65,7 +65,7 @@ public class WorldBackupHelper {
             });
         }
 
-        WorldBrowser.LOGGER.info("Welt-Backup erfolgreich erstellt: {}", zipFile);
+        WorldBrowser.LOGGER.info("World backup created: {}", zipFile);
         return zipFile;
     }
 
