@@ -38,11 +38,11 @@ public class ModScanner {
                     // Fallback to filename
                     String fileName = jarPath.getFileName().toString();
                     String simpleName = fileName.endsWith(".jar") ? fileName.substring(0, fileName.length() - 4) : fileName;
-                    mods.add(new ModInfo(simpleName.toLowerCase(), simpleName, "unbekannt", fileName));
+                    mods.add(new ModInfo(simpleName.toLowerCase(), simpleName, "unknown", fileName));
                 }
             }
         } catch (Exception e) {
-            WorldBrowser.LOGGER.warn("Fehler beim Scannen der Mods in {}: {}", modsDir, e.getMessage());
+            WorldBrowser.LOGGER.warn("Failed to scan mods in {}: {}", modsDir, e.getMessage());
         }
 
         return mods;
@@ -61,7 +61,7 @@ public class ModScanner {
                         JsonObject obj = jsonElement.getAsJsonObject();
                         String id = obj.has("id") ? obj.get("id").getAsString() : null;
                         String name = obj.has("name") ? obj.get("name").getAsString() : id;
-                        String version = obj.has("version") ? obj.get("version").getAsString() : "unbekannt";
+                        String version = obj.has("version") ? obj.get("version").getAsString() : "unknown";
                         if (id != null) {
                             return new ModInfo(id, name, version, fileName);
                         }
@@ -86,8 +86,7 @@ public class ModScanner {
                     while ((line = reader.readLine()) != null) {
                         line = line.trim();
                         if (line.startsWith("[")) {
-                            // Erster [[mods]]-Block zaehlt - sonst mischt sich die ID des einen
-                            // Eintrags mit dem displayName des naechsten Blocks
+                            // Only evaluate first [[mods]] block to avoid mixing attributes across entries
                             if (inModsBlock) break;
                             inModsBlock = line.startsWith("[[mods]]");
                             continue;
@@ -108,7 +107,7 @@ public class ModScanner {
                     }
                     if (version == null) version = fallbackVersion;
                     if (modId != null) {
-                        return new ModInfo(modId, displayName != null ? displayName : modId, version != null ? version : "unbekannt", fileName);
+                        return new ModInfo(modId, displayName != null ? displayName : modId, version != null ? version : "unknown", fileName);
                     }
                 }
             }
@@ -123,7 +122,7 @@ public class ModScanner {
                         JsonObject obj = jsonElement.getAsJsonArray().get(0).getAsJsonObject();
                         String modId = obj.has("modid") ? obj.get("modid").getAsString() : null;
                         String name = obj.has("name") ? obj.get("name").getAsString() : modId;
-                        String version = obj.has("version") ? obj.get("version").getAsString() : "unbekannt";
+                        String version = obj.has("version") ? obj.get("version").getAsString() : "unknown";
                         if (modId != null) {
                             return new ModInfo(modId, name, version, fileName);
                         }
@@ -135,7 +134,7 @@ public class ModScanner {
 
         // Fallback: derive from filename
         String simpleName = fileName.endsWith(".jar") ? fileName.substring(0, fileName.length() - 4) : fileName;
-        return new ModInfo(simpleName.toLowerCase(), simpleName, "unbekannt", fileName);
+        return new ModInfo(simpleName.toLowerCase(), simpleName, "unknown", fileName);
     }
 
     private static String extractTomlValue(String line) {
@@ -145,15 +144,15 @@ public class ModScanner {
         if (val.isEmpty()) return null;
         char first = val.charAt(0);
         if (first == '"' || first == '\'') {
-            // Bis zum schliessenden Quote lesen - dahinter kann ein #-Kommentar stehen
+            // Extract quoted value, ignoring trailing inline comments
             int end = val.indexOf(first, 1);
             val = end > 0 ? val.substring(1, end) : val.substring(1);
         } else {
-            // Unquotierter Wert: Trailing-Kommentar abschneiden
+            // Strip trailing comment from unquoted value
             int hash = val.indexOf('#');
             if (hash >= 0) val = val.substring(0, hash).trim();
         }
-        // TOML-Platzhalter wie ${file.jarVersion} sind keine echten Werte
+        // Ignore unresolved template placeholders like ${file.jarVersion}
         if (val.isEmpty() || (val.startsWith("${") && val.endsWith("}"))) return null;
         return val;
     }

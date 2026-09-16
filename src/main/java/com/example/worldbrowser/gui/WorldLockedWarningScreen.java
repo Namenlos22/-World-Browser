@@ -25,7 +25,6 @@ public class WorldLockedWarningScreen extends Screen {
 
         int centerX = this.width / 2;
 
-        // Title
         StringWidget titleWidget = new StringWidget(
                 centerX - 150, 40, 300, 20,
                 Component.translatable("worldbrowser.warning.locked.title").withStyle(ChatFormatting.RED, ChatFormatting.BOLD),
@@ -33,7 +32,6 @@ public class WorldLockedWarningScreen extends Screen {
         );
         this.addRenderableWidget(titleWidget);
 
-        // Warning message
         Component message = Component.translatable("worldbrowser.warning.locked.message")
                 .append("\n\n")
                 .append(Component.translatable("worldbrowser.warning.locked.caution"));
@@ -46,7 +44,6 @@ public class WorldLockedWarningScreen extends Screen {
         messageWidget.setMaxWidth(320);
         this.addRenderableWidget(messageWidget);
 
-        // Back button
         this.addRenderableWidget(
                 Button.builder(Component.translatable("worldbrowser.warning.locked.back"), btn -> this.minecraft.setScreenAndShow(parentScreen))
                         .bounds(centerX - 100, this.height - 45, 200, 20)

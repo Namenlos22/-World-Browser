@@ -69,27 +69,32 @@ public class WorldBrowserRegistry {
         registeredWorldsById.clear();
         worldsByProfileKey.clear();
 
-        // 1. Scan profiles (fast, deduplicated)
+        // 1. Discover all profiles
         List<ProfileInfo> scanned = ProfileScanner.scanAllProfiles();
         profiles.addAll(scanned);
 
-        // Find current profile
         currentProfile = profiles.stream().filter(ProfileInfo::isCurrent).findFirst().orElse(null);
 
-        WorldBrowser.LOGGER.info("WorldBrowserRegistry: {} Profile geladen.", profiles.size());
+        WorldBrowser.LOGGER.info("WorldBrowserRegistry: loaded {} profiles.", profiles.size());
 
-        // 2. Initialize navigation state based on startup rules
+        // 2. Initialize navigation state and load local/global configurations
         if (!initialized) {
             initNavigationState();
             initialized = true;
         }
     }
 
-    private void initNavigationState() {
-        Path configToRead = Files.exists(GLOBAL_CONFIG_PATH) ? GLOBAL_CONFIG_PATH : (Files.exists(LOCAL_CONFIG_PATH) ? LOCAL_CONFIG_PATH : null);
+    public void prewarmProfileCounts() {
+        for (ProfileInfo p : profiles) {
+            getWorldCountForProfile(p);
+            p.getModCount();
+        }
+    }
 
-        if (configToRead != null) {
-            try (Reader reader = Files.newBufferedReader(configToRead)) {
+    private void initNavigationState() {
+        // External world shortcuts are strictly profile-local
+        if (Files.exists(LOCAL_CONFIG_PATH)) {
+            try (Reader reader = Files.newBufferedReader(LOCAL_CONFIG_PATH)) {
                 JsonObject json = JsonParser.parseReader(reader).getAsJsonObject();
 
                 recentExternalWorldPaths.clear();
@@ -106,7 +111,6 @@ public class WorldBrowserRegistry {
                     hasUserClearedRecents = json.get("hasUserClearedRecents").getAsBoolean();
                 }
 
-                confirmedIncompatibleWorldPaths.clear();
                 if (json.has("confirmedIncompatibleWorlds")) {
                     JsonArray arr = json.getAsJsonArray("confirmedIncompatibleWorlds");
                     for (JsonElement el : arr) {
@@ -116,11 +120,28 @@ public class WorldBrowserRegistry {
                     }
                 }
             } catch (Exception e) {
-                WorldBrowser.LOGGER.warn("Konnte Konfiguration {} nicht lesen: {}", configToRead, e.getMessage());
+                WorldBrowser.LOGGER.warn("Failed to read local configuration from {}: {}", LOCAL_CONFIG_PATH, e.getMessage());
             }
         }
 
-        // Standard: immer im aktuellen Profil starten
+        // Read global state if local configuration did not provide it
+        if (confirmedIncompatibleWorldPaths.isEmpty() && Files.exists(GLOBAL_CONFIG_PATH)) {
+            try (Reader reader = Files.newBufferedReader(GLOBAL_CONFIG_PATH)) {
+                JsonObject json = JsonParser.parseReader(reader).getAsJsonObject();
+                if (json.has("confirmedIncompatibleWorlds")) {
+                    JsonArray arr = json.getAsJsonArray("confirmedIncompatibleWorlds");
+                    for (JsonElement el : arr) {
+                        if (el.isJsonPrimitive()) {
+                            confirmedIncompatibleWorldPaths.add(el.getAsString());
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                WorldBrowser.LOGGER.warn("Failed to read global configuration from {}: {}", GLOBAL_CONFIG_PATH, e.getMessage());
+            }
+        }
+
+        // Start in current profile by default
         if (currentProfile != null) {
             navigationState.goToProfile(currentProfile);
         } else {
@@ -131,54 +152,72 @@ public class WorldBrowserRegistry {
 
     public void saveConfig() {
         try {
-            JsonObject json = new JsonObject();
             Path currentGameDir = FabricLoader.getInstance().getGameDir().toAbsolutePath().normalize();
-            json.addProperty("lastGameDir", currentGameDir.toString());
-            json.addProperty("lastLevel", navigationState.getLevel().name());
 
-            if (navigationState.getSelectedLauncher() != null) {
-                json.addProperty("lastLauncher", navigationState.getSelectedLauncher().getId());
-            }
-            if (navigationState.getSelectedProfile() != null) {
-                json.addProperty("lastProfileId", navigationState.getSelectedProfile().getProfileId());
-            }
-
-            JsonArray recentArray = new JsonArray();
-            for (String path : recentExternalWorldPaths) {
-                recentArray.add(path);
-            }
-            json.add("recentExternalWorlds", recentArray);
-            json.addProperty("hasUserClearedRecents", hasUserClearedRecents);
-
-            JsonArray confirmedArray = new JsonArray();
-            for (String path : confirmedIncompatibleWorldPaths) {
-                confirmedArray.add(path);
-            }
-            json.add("confirmedIncompatibleWorlds", confirmedArray);
-
-            // Save to shared global config
+            // 1. Instance-local config (includes profile-local external world shortcuts)
             try {
-                if (GLOBAL_CONFIG_PATH.getParent() != null) {
-                    Files.createDirectories(GLOBAL_CONFIG_PATH.getParent());
-                }
-                try (Writer writer = Files.newBufferedWriter(GLOBAL_CONFIG_PATH)) {
-                    GSON.toJson(json, writer);
-                }
-            } catch (Exception ignored) {
-            }
+                JsonObject localJson = new JsonObject();
+                localJson.addProperty("lastGameDir", currentGameDir.toString());
+                localJson.addProperty("lastLevel", navigationState.getLevel().name());
 
-            // Also save to instance local config
-            try {
+                if (navigationState.getSelectedLauncher() != null) {
+                    localJson.addProperty("lastLauncher", navigationState.getSelectedLauncher().getId());
+                }
+                if (navigationState.getSelectedProfile() != null) {
+                    localJson.addProperty("lastProfileId", navigationState.getSelectedProfile().getProfileId());
+                }
+
+                JsonArray recentArray = new JsonArray();
+                for (String path : recentExternalWorldPaths) {
+                    recentArray.add(path);
+                }
+                localJson.add("recentExternalWorlds", recentArray);
+                localJson.addProperty("hasUserClearedRecents", hasUserClearedRecents);
+
+                JsonArray confirmedArray = new JsonArray();
+                for (String path : confirmedIncompatibleWorldPaths) {
+                    confirmedArray.add(path);
+                }
+                localJson.add("confirmedIncompatibleWorlds", confirmedArray);
+
                 if (LOCAL_CONFIG_PATH.getParent() != null) {
                     Files.createDirectories(LOCAL_CONFIG_PATH.getParent());
                 }
                 try (Writer writer = Files.newBufferedWriter(LOCAL_CONFIG_PATH)) {
-                    GSON.toJson(json, writer);
+                    GSON.toJson(localJson, writer);
+                }
+            } catch (Exception ignored) {
+            }
+
+            // 2. Global config (shared history only, NO shortcuts)
+            try {
+                JsonObject globalJson = new JsonObject();
+                globalJson.addProperty("lastGameDir", currentGameDir.toString());
+                globalJson.addProperty("lastLevel", navigationState.getLevel().name());
+
+                if (navigationState.getSelectedLauncher() != null) {
+                    globalJson.addProperty("lastLauncher", navigationState.getSelectedLauncher().getId());
+                }
+                if (navigationState.getSelectedProfile() != null) {
+                    globalJson.addProperty("lastProfileId", navigationState.getSelectedProfile().getProfileId());
+                }
+
+                JsonArray confirmedArray = new JsonArray();
+                for (String path : confirmedIncompatibleWorldPaths) {
+                    confirmedArray.add(path);
+                }
+                globalJson.add("confirmedIncompatibleWorlds", confirmedArray);
+
+                if (GLOBAL_CONFIG_PATH.getParent() != null) {
+                    Files.createDirectories(GLOBAL_CONFIG_PATH.getParent());
+                }
+                try (Writer writer = Files.newBufferedWriter(GLOBAL_CONFIG_PATH)) {
+                    GSON.toJson(globalJson, writer);
                 }
             } catch (Exception ignored) {
             }
         } catch (Exception e) {
-            WorldBrowser.LOGGER.warn("Konnte Konfiguration nicht speichern: {}", e.getMessage());
+            WorldBrowser.LOGGER.warn("Failed to save configuration: {}", e.getMessage());
         }
     }
 
@@ -216,12 +255,13 @@ public class WorldBrowserRegistry {
         Path savesDir = profile.getSavesDir();
 
         if (worldsByProfileKey.containsKey(key)) {
-            // Cache mit Disk abgleichen - geloeschte Welten raus, neue rein (kompletter Rescan bei Abweichung)
+            // Re-validate cache against disk to detect created or deleted worlds
             Set<String> onDisk = listWorldDirs(savesDir);
             List<WrappedLevelSummary> cached = worldsByProfileKey.get(key);
             boolean stale = cached.size() != onDisk.size()
                     || cached.stream().anyMatch(w -> !onDisk.contains(w.getOriginal().getLevelId()));
             if (!stale) {
+                profile.setCachedWorldCount(cached.size());
                 return cached;
             }
             unregisterMissingWorlds();
@@ -247,7 +287,7 @@ public class WorldBrowserRegistry {
                     Path worldDir = savesDir.resolve(rawId);
                     String uniqueId;
                     if (profile.isCurrent()) {
-                        // Current profile uses native ID (zero redirection, native compatibility with FastQuit and Vanilla)
+                        // Current profile uses native ID for vanilla and FastQuit compatibility
                         uniqueId = rawId;
                     } else {
                         // External profile uses Windows-safe alphanumeric identifier (no colons)
@@ -256,7 +296,7 @@ public class WorldBrowserRegistry {
                         String safeWorld = rawId.replaceAll("[^a-zA-Z0-9_.-]", "_");
                         String baseId = "wb_" + safeLauncher + "_" + safeProfile + "_" + safeWorld;
                         uniqueId = baseId;
-                        // Sanitized IDs can collide ("My World" vs "my_world") - never overwrite a different world's mapping
+                        // Avoid collisions between sanitized names
                         for (int suffix = 1; registeredWorldsById.containsKey(uniqueId)
                                 && !registeredWorldsById.get(uniqueId).worldDir().equals(worldDir); suffix++) {
                             uniqueId = baseId + "_" + suffix;
@@ -275,11 +315,12 @@ public class WorldBrowserRegistry {
                     profileWorlds.add(wrapped);
                 }
             } catch (Exception e) {
-                WorldBrowser.LOGGER.warn("Konnte Welten für Profil {} nicht laden: {}", profile.getDisplayName(), e.getMessage());
+                WorldBrowser.LOGGER.warn("Failed to load worlds for profile {}: {}", profile.getDisplayName(), e.getMessage());
             }
         }
 
         worldsByProfileKey.put(key, profileWorlds);
+        profile.setCachedWorldCount(profileWorlds.size());
         return profileWorlds;
     }
 
@@ -304,12 +345,23 @@ public class WorldBrowserRegistry {
 
     public int getWorldCountForProfile(ProfileInfo profile) {
         if (profile == null || profile.getSavesDir() == null) return 0;
+        int cached = profile.getCachedWorldCount();
+        if (cached >= 0) {
+            return cached;
+        }
+
         String key = profile.getUniqueKey();
         if (worldsByProfileKey.containsKey(key)) {
-            return worldsByProfileKey.get(key).size();
+            int count = worldsByProfileKey.get(key).size();
+            profile.setCachedWorldCount(count);
+            return count;
         }
+
         Path savesDir = profile.getSavesDir();
-        if (!Files.isDirectory(savesDir)) return 0;
+        if (!Files.isDirectory(savesDir)) {
+            profile.setCachedWorldCount(0);
+            return 0;
+        }
 
         int count = 0;
         try (java.nio.file.DirectoryStream<Path> stream = Files.newDirectoryStream(savesDir)) {
@@ -320,6 +372,7 @@ public class WorldBrowserRegistry {
             }
         } catch (Exception ignored) {
         }
+        profile.setCachedWorldCount(count);
         return count;
     }
 
@@ -402,27 +455,6 @@ public class WorldBrowserRegistry {
         return null;
     }
 
-    private synchronized void seedRecentWorldsIfEmpty() {
-        if (hasUserClearedRecents || !recentExternalWorldPaths.isEmpty()) return;
-
-        List<WrappedLevelSummary> allExternal = new ArrayList<>();
-        for (ProfileInfo p : profiles) {
-            if (!p.isCurrent()) {
-                allExternal.addAll(getWorldsForProfile(p));
-            }
-        }
-        allExternal.sort((w1, w2) -> Long.compare(w2.getLastPlayed(), w1.getLastPlayed()));
-        for (WrappedLevelSummary w : allExternal) {
-            if (w.getLastPlayed() > 0) {
-                recentExternalWorldPaths.add(w.getWorldDir().toAbsolutePath().normalize().toString());
-                if (recentExternalWorldPaths.size() >= 5) break;
-            }
-        }
-        if (!recentExternalWorldPaths.isEmpty()) {
-            saveConfig();
-        }
-    }
-
     public synchronized List<WrappedLevelSummary> getWorldsForCurrentProfileWithRecents() {
         if (currentProfile == null) return Collections.emptyList();
 
@@ -430,11 +462,6 @@ public class WorldBrowserRegistry {
         Set<String> existingPaths = new HashSet<>();
         for (WrappedLevelSummary w : result) {
             existingPaths.add(w.getWorldDir().toAbsolutePath().normalize().toString());
-        }
-
-        // Seed if empty
-        if (recentExternalWorldPaths.isEmpty()) {
-            seedRecentWorldsIfEmpty();
         }
 
         List<String> toRemove = new ArrayList<>();
@@ -460,7 +487,7 @@ public class WorldBrowserRegistry {
             saveConfig();
         }
 
-        // Sort by last played descending (vanilla order)
+        // Sort descending by last played time
         result.sort((w1, w2) -> {
             int cmp = Long.compare(w2.getLastPlayed(), w1.getLastPlayed());
             if (cmp != 0) return cmp;

@@ -80,7 +80,7 @@ public class ModCompatibilityChecker {
         for (Map.Entry<String, ModInfo> e : currentMods.entrySet()) {
             if (!processedCurrentIds.contains(e.getKey())) {
                 ModInfo cm = e.getValue();
-                // Filter out standard internal IDs for cleaner view
+                // Exclude internal platform modules
                 if (isSystemMod(cm.getId())) continue;
 
                 entries.add(new ModCompatibilityEntry(
@@ -93,7 +93,7 @@ public class ModCompatibilityChecker {
             }
         }
 
-        // Sort entries: MISSING first, then VERSION_MISMATCH, then COMPATIBLE, then EXTRA
+        // Sort: MISSING, VERSION_MISMATCH, COMPATIBLE, EXTRA
         entries.sort((a, b) -> Integer.compare(getStatusPriority(a.getStatus()), getStatusPriority(b.getStatus())));
 
         return new ModCompatibilityResult(entries);
@@ -115,7 +115,7 @@ public class ModCompatibilityChecker {
     }
 
     private static boolean isSystemMod(String id) {
-        // Die Mod-ID des Fabric Loaders ist "fabricloader" (ohne Bindestrich)
+        // Fabric Loader mod ID is "fabricloader"
         return id.equals("minecraft") || id.equals("java") || id.startsWith("fabricloader");
     }
 
@@ -125,7 +125,7 @@ public class ModCompatibilityChecker {
             if (Files.exists(recordFile)) {
                 try (Reader reader = Files.newBufferedReader(recordFile)) {
                     JsonElement json = JsonParser.parseReader(reader);
-                    // "format" fehlt in Dateien vom alten Parser (kaputte TOML-Werte) -> neu scannen
+                    // Re-scan legacy format cache files lacking modern metadata
                     if (json.isJsonObject() && json.getAsJsonObject().has("mods") && json.getAsJsonObject().has("format")) {
                         JsonArray arr = json.getAsJsonObject().getAsJsonArray("mods");
                         List<ModInfo> list = new ArrayList<>();
@@ -145,17 +145,17 @@ public class ModCompatibilityChecker {
                         }
                     }
                 } catch (Exception e) {
-                    WorldBrowser.LOGGER.warn("Konnte {} nicht lesen: {}", recordFile, e.getMessage());
+                    WorldBrowser.LOGGER.warn("Failed to read {}: {}", recordFile, e.getMessage());
                 }
             }
         }
 
-        // Fallback: use profile mods
+        // Fallback to profile mods
         List<ModInfo> profileMods = profile != null ? profile.getMods() : List.of();
 
-        // Save to world folder if possible
+        // Cache to world directory when possible
         if (worldDir != null && Files.isDirectory(worldDir) && !profileMods.isEmpty()) {
-            saveWorldMods(worldDir, profileMods, profile != null ? profile.getDisplayName() : "Unbekannt");
+            saveWorldMods(worldDir, profileMods, profile != null ? profile.getDisplayName() : "Unknown");
         }
 
         return profileMods;
@@ -185,7 +185,7 @@ public class ModCompatibilityChecker {
                 GSON.toJson(root, writer);
             }
         } catch (Exception e) {
-            WorldBrowser.LOGGER.warn("Konnte Welt-Mods nicht speichern in {}: {}", recordFile, e.getMessage());
+            WorldBrowser.LOGGER.warn("Failed to save world mods to {}: {}", recordFile, e.getMessage());
         }
     }
 }

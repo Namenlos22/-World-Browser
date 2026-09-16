@@ -15,8 +15,7 @@ dependencies {
 	// To change the versions see the gradle.properties file
 	minecraft "com.mojang:minecraft:${project.minecraft_version}"
 	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
-	// fabric-resource-loader-v1 registriert die Mod-Resourcepacks (lang/, textures/) -
-	// ohne Fabric API werden unsere Sprachdateien nicht geladen.
+	// fabric-api is required to register mod resources (lang/, textures/)
 	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
 }
 
@@ -24,8 +23,7 @@ processResources {
 	def version = project.version
 	inputs.property "version", version
 
-	// Ohne UTF-8 schreibt expand() im Plattform-Charset (CP1252) und macht
-	// die fabric.mod.json ungueltig -> Mod-Ressourcen (lang/) werden nicht geladen.
+	// Ensure UTF-8 encoding so fabric.mod.json is valid across all platforms
 	filesMatching("fabric.mod.json") {
 		filteringCharset = "UTF-8"
 		expand "version": version

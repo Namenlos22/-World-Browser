@@ -43,34 +43,25 @@ public class FolderListEntry extends WorldSelectionList.Entry {
         int x = getContentX();
         int y = getContentY();
 
-        // 32x32 pixel-art folder icon in vanilla style
         int fx = x + 2;
         int fy = y + 2;
 
-        // Back Tab
         extractor.fill(fx + 2, fy + 2, fx + 12, fy + 8, 0xFFFFA000);
-        // Back Body
         extractor.fill(fx + 2, fy + 6, fx + 28, fy + 26, 0xFFFFB300);
-        // Document peeking out
         extractor.fill(fx + 6, fy + 4, fx + 24, fy + 12, 0xFFF5F5F5);
         extractor.fill(fx + 8, fy + 6, fx + 20, fy + 7, 0xFF9E9E9E);
         extractor.fill(fx + 8, fy + 9, fx + 16, fy + 10, 0xFF9E9E9E);
-        // Front Flap
         extractor.fill(fx, fy + 10, fx + 28, fy + 26, 0xFFFFD54F);
-        // Flap Highlight
         extractor.fill(fx + 1, fy + 11, fx + 27, fy + 12, 0xFFFFF9C4);
-        // Flap Shadow & Border
         extractor.fill(fx, fy + 25, fx + 28, fy + 26, 0xFFC79100);
         extractor.fill(fx, fy + 10, fx + 1, fy + 25, 0xFFC79100);
         extractor.fill(fx + 27, fy + 10, fx + 28, fy + 25, 0xFFC79100);
-        // Outer dark borders
         extractor.fill(fx + 1, fy + 1, fx + 13, fy + 2, 0xFF795548);
         extractor.fill(fx + 1, fy + 5, fx + 29, fy + 6, 0xFF795548);
         extractor.fill(fx + 28, fy + 6, fx + 29, fy + 26, 0xFF795548);
         extractor.fill(fx + 1, fy + 26, fx + 29, fy + 27, 0xFF795548);
         extractor.fill(fx, fy + 10, fx + 1, fy + 26, 0xFF795548);
 
-        // Vanilla text placement: matches WorldListEntry exactly (x + 35)
         int textX = x + 35;
         extractor.textRenderer().accept(textX, y + 4, title);
         if (subtitle != null) {

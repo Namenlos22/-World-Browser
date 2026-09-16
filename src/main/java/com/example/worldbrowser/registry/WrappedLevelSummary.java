@@ -16,7 +16,8 @@ public class WrappedLevelSummary extends LevelSummary {
     private final String customLevelId;
     private final ProfileInfo profile;
     private final Path worldDir;
-    private com.example.worldbrowser.compat.ModCompatibilityResult cachedCompatResult;
+    private volatile com.example.worldbrowser.compat.ModCompatibilityResult cachedCompatResult;
+    private volatile boolean compatCheckRunning = false;
     private Boolean cachedLocked = null;
 
     public WrappedLevelSummary(LevelSummary original, String customLevelId, ProfileInfo profile, Path worldDir) {
@@ -49,8 +50,13 @@ public class WrappedLevelSummary extends LevelSummary {
     }
 
     public com.example.worldbrowser.compat.ModCompatibilityResult getCompatibilityResult() {
-        if (cachedCompatResult == null) {
-            cachedCompatResult = com.example.worldbrowser.compat.ModCompatibilityChecker.checkCompatibility(worldDir, profile);
+        if (cachedCompatResult == null && !compatCheckRunning) {
+            compatCheckRunning = true;
+            java.util.concurrent.CompletableFuture.supplyAsync(() ->
+                    com.example.worldbrowser.compat.ModCompatibilityChecker.checkCompatibility(worldDir, profile)
+            ).thenAccept((com.example.worldbrowser.compat.ModCompatibilityResult result) -> {
+                this.cachedCompatResult = result;
+            });
         }
         return cachedCompatResult;
     }
@@ -173,8 +179,7 @@ public class WrappedLevelSummary extends LevelSummary {
 
     @Override
     public boolean primaryActionActive() {
-        // Nicht !isLocked() - sonst sind gelockte Welten nicht interagierbar und der
-        // Locked-Warndialog in WorldListEntryMixin.joinWorld wird nie erreicht.
+        // Keep primary action active so joinWorld can display the lock warning screen
         return original.primaryActionActive();
     }
 

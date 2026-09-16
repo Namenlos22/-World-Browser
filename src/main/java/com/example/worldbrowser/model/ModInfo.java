@@ -11,7 +11,7 @@ public class ModInfo {
     public ModInfo(String id, String name, String version, String fileName) {
         this.id = id != null ? id : "unknown";
         this.name = name != null && !name.isBlank() ? name : this.id;
-        this.version = version != null && !version.isBlank() ? version : "unbekannt";
+        this.version = version != null && !version.isBlank() ? version : "unknown";
         this.fileName = fileName != null ? fileName : "";
     }
 

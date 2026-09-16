@@ -68,27 +68,56 @@ public class ProfileInfo {
         return isCurrent;
     }
 
+    private volatile int cachedModCount = -1;
+    private volatile int cachedWorldCount = -1;
+
     public List<ModInfo> getMods() {
         if (mods == null) {
             mods = com.example.worldbrowser.scanner.ModScanner.scanMods(modsDir);
+            cachedModCount = mods.size();
         }
         return Collections.unmodifiableList(mods);
     }
 
     public int getModCount() {
-        if (mods != null) return mods.size();
-        if (modsDir == null || !java.nio.file.Files.isDirectory(modsDir)) return 0;
+        if (cachedModCount >= 0) {
+            return cachedModCount;
+        }
+        if (mods != null) {
+            cachedModCount = mods.size();
+            return cachedModCount;
+        }
+        if (modsDir == null || !java.nio.file.Files.isDirectory(modsDir)) {
+            cachedModCount = 0;
+            return 0;
+        }
         try (java.nio.file.DirectoryStream<Path> stream = java.nio.file.Files.newDirectoryStream(modsDir, "*.jar")) {
-            int c = 0;
-            for (Path p : stream) c++;
-            return c;
+            int count = 0;
+            for (Path ignored : stream) {
+                count++;
+            }
+            cachedModCount = count;
+            return count;
         } catch (Exception e) {
             return 0;
         }
     }
 
+    public int getCachedWorldCount() {
+        return cachedWorldCount;
+    }
+
+    public void setCachedWorldCount(int count) {
+        this.cachedWorldCount = count;
+    }
+
+    public void setCachedModCount(int count) {
+        this.cachedModCount = count;
+    }
+
     public void setMods(List<ModInfo> mods) {
         this.mods = mods != null ? new ArrayList<>(mods) : null;
+        this.cachedModCount = this.mods != null ? this.mods.size() : -1;
     }
 
     public String getUniqueKey() {

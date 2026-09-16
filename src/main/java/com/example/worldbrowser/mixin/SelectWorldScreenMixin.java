@@ -37,6 +37,7 @@ public abstract class SelectWorldScreenMixin extends Screen implements WorldBrow
 
     @Inject(method = "init", at = @At("HEAD"))
     private void worldbrowser_onInitHead(CallbackInfo ci) {
+        // Run synchronous reload only if background discovery has not finished yet
         if (!WorldBrowserRegistry.getInstance().isInitialized()) {
             WorldBrowserRegistry.getInstance().reload();
         }
@@ -147,8 +148,8 @@ public abstract class SelectWorldScreenMixin extends Screen implements WorldBrow
         int searchGap = 4;
         int searchBoxW = 200;
 
-        int totalButtonsW = (btnW * 4) + (btnGap * 3); // 86
-        int totalRowW = totalButtonsW + searchGap + searchBoxW; // 290
+        int totalButtonsW = (btnW * 4) + (btnGap * 3);
+        int totalRowW = totalButtonsW + searchGap + searchBoxW;
         int startX = (this.width - totalRowW) / 2;
 
         if (this.worldbrowser_rootButton != null) {
@@ -172,6 +173,7 @@ public abstract class SelectWorldScreenMixin extends Screen implements WorldBrow
         this.searchBox.setY(rowY);
         this.searchBox.setWidth(searchBoxW);
 
+        // Update path hint and navigation button states
         NavigationState state = WorldBrowserRegistry.getInstance().getNavigationState();
         Component pathHint = state.getPathHint().copy().withStyle(ChatFormatting.GRAY);
         this.searchBox.setHint(pathHint);
