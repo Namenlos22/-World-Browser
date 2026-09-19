@@ -9,6 +9,7 @@ import com.google.gson.JsonParser;
 import net.fabricmc.loader.api.FabricLoader;
 
 import java.io.Reader;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -95,7 +96,7 @@ public class ProfileScanner {
 
             boolean parsedAny = false;
             if (Files.exists(profilesJson)) {
-                try (Reader reader = Files.newBufferedReader(profilesJson)) {
+                try (Reader reader = Files.newBufferedReader(profilesJson, StandardCharsets.UTF_8)) {
                     JsonElement rootElement = JsonParser.parseReader(reader);
                     if (rootElement.isJsonObject()) {
                         JsonObject rootObj = rootElement.getAsJsonObject();
@@ -122,7 +123,7 @@ public class ProfileScanner {
 
                                 Path savesDir = gameDir.resolve("saves");
                                 Path modsDir = gameDir.resolve("mods");
-                                boolean isCurrent = gameDir.equals(currentGameDir);
+                                boolean isCurrent = isSamePath(gameDir, currentGameDir);
 
                                 String profileKey = "vanilla:" + gameDir.toAbsolutePath().normalize();
                                 if (addedProfileKeys.add(profileKey)) {
@@ -151,7 +152,7 @@ public class ProfileScanner {
             if (!parsedAny && Files.isDirectory(mcDir.resolve("saves"))) {
                 Path savesDir = mcDir.resolve("saves");
                 Path modsDir = mcDir.resolve("mods");
-                boolean isCurrent = mcDir.equals(currentGameDir);
+                boolean isCurrent = isSamePath(mcDir, currentGameDir);
                 String profileKey = "vanilla:" + mcDir.toAbsolutePath().normalize();
                 if (addedProfileKeys.add(profileKey)) {
                     ProfileInfo defaultProfile = new ProfileInfo(
@@ -188,7 +189,7 @@ public class ProfileScanner {
                     Path savesDir = profileDir.resolve("saves");
                     Path modsDir = profileDir.resolve("mods");
                     Path iconPath = profileDir.resolve("icon.png");
-                    boolean isCurrent = normDir.equals(currentGameDir);
+                    boolean isCurrent = isSamePath(normDir, currentGameDir);
 
                     ProfileInfo profile = new ProfileInfo(
                             LauncherType.MODRINTH,
@@ -228,7 +229,7 @@ public class ProfileScanner {
                     // Try to read minecraftinstance.json
                     Path metaFile = instanceDir.resolve("minecraftinstance.json");
                     if (Files.exists(metaFile)) {
-                        try (Reader reader = Files.newBufferedReader(metaFile)) {
+                        try (Reader reader = Files.newBufferedReader(metaFile, StandardCharsets.UTF_8)) {
                             JsonElement json = JsonParser.parseReader(reader);
                             if (json.isJsonObject()) {
                                 JsonObject obj = json.getAsJsonObject();
@@ -245,7 +246,7 @@ public class ProfileScanner {
 
                     Path savesDir = instanceDir.resolve("saves");
                     Path modsDir = instanceDir.resolve("mods");
-                    boolean isCurrent = normDir.equals(currentGameDir);
+                    boolean isCurrent = isSamePath(normDir, currentGameDir);
 
                     ProfileInfo profile = new ProfileInfo(
                             LauncherType.CURSEFORGE,
@@ -264,6 +265,18 @@ public class ProfileScanner {
                 WorldBrowser.LOGGER.warn("Failed to scan CurseForge directory {}: {}", root, e.getMessage());
             }
         }
+    }
+
+    public static boolean isSamePath(Path p1, Path p2) {
+        if (p1 == null || p2 == null) return false;
+        if (p1.equals(p2)) return true;
+        try {
+            if (Files.exists(p1) && Files.exists(p2)) {
+                return Files.isSameFile(p1, p2);
+            }
+        } catch (Exception ignored) {
+        }
+        return p1.toAbsolutePath().normalize().toString().equalsIgnoreCase(p2.toAbsolutePath().normalize().toString());
     }
 
     private static void addUniqueDir(Set<Path> set, Path path) {

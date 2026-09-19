@@ -7,11 +7,6 @@ World Browser turns the standard world list into a folder-style browser. It disc
 > [!WARNING]
 > Opening a world with a different Minecraft version or mod set can still damage it. Compatibility checks and backups reduce risk, but cannot guarantee that a world is safe to load.
 
-## Downloads
-
-- [Modrinth](https://modrinth.com/mod/world-browser)
-- [CurseForge](https://www.curseforge.com/minecraft/mc-mods/world-browser)
-
 ## Features
 
 - Browse worlds from Vanilla Minecraft, Modrinth App, and CurseForge profiles.
@@ -27,15 +22,15 @@ World Browser turns the standard world list into a folder-style browser. It disc
 
 ## Requirements
 
-- Minecraft 26.2
+- Minecraft 26.3
 - Fabric Loader 0.19.5 or newer
-- Fabric API 0.160.0+26.2 or a compatible release
+- Fabric API 0.160.5+26.3 or a compatible release
 - Java 25 or newer
 - Client-side installation
 
 ## Installation
 
-1. Install Fabric Loader for Minecraft 26.2.
+1. Install Fabric Loader for Minecraft 26.3.
 2. Install Fabric API.
 3. Place the World Browser JAR in the instance's `mods` folder.
 4. Start Minecraft and open **Singleplayer**.

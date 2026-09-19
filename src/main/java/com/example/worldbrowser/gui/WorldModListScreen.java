@@ -62,6 +62,9 @@ public class WorldModListScreen extends Screen {
 
     private void populateList(String filter) {
         modSelectionList.clearEntries();
+        if (result == null || result.getEntries() == null) {
+            return;
+        }
         for (ModCompatibilityEntry entry : result.getEntries()) {
             if (filter.isEmpty() 
                     || entry.getModName().toLowerCase().contains(filter) 

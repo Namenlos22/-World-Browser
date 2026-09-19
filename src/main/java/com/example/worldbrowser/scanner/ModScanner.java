@@ -142,15 +142,22 @@ public class ModScanner {
         if (eq == -1) return null;
         String val = line.substring(eq + 1).trim();
         if (val.isEmpty()) return null;
-        char first = val.charAt(0);
-        if (first == '"' || first == '\'') {
-            // Extract quoted value, ignoring trailing inline comments
-            int end = val.indexOf(first, 1);
-            val = end > 0 ? val.substring(1, end) : val.substring(1);
+
+        if (val.startsWith("\"\"\"") && val.endsWith("\"\"\"") && val.length() >= 6) {
+            val = val.substring(3, val.length() - 3).trim();
+        } else if (val.startsWith("'''") && val.endsWith("'''") && val.length() >= 6) {
+            val = val.substring(3, val.length() - 3).trim();
         } else {
-            // Strip trailing comment from unquoted value
-            int hash = val.indexOf('#');
-            if (hash >= 0) val = val.substring(0, hash).trim();
+            char first = val.charAt(0);
+            if (first == '"' || first == '\'') {
+                // Extract quoted value, ignoring trailing inline comments
+                int end = val.indexOf(first, 1);
+                val = end > 0 ? val.substring(1, end) : val.substring(1);
+            } else {
+                // Strip trailing comment from unquoted value
+                int hash = val.indexOf('#');
+                if (hash >= 0) val = val.substring(0, hash).trim();
+            }
         }
         // Ignore unresolved template placeholders like ${file.jarVersion}
         if (val.isEmpty() || (val.startsWith("${") && val.endsWith("}"))) return null;

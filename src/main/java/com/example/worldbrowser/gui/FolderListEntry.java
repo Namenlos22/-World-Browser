@@ -64,6 +64,13 @@ public class FolderListEntry extends WorldSelectionList.Entry {
         extractor.fill(fx + 1, fy + 26, fx + 29, fy + 27, 0xFF795548);
         extractor.fill(fx, fy + 10, fx + 1, fy + 26, 0xFF795548);
 
+        if (isHovered) {
+            extractor.fill(x - 2, y - 2, x + getContentWidth() + 2, y + getContentHeight() + 2, 0x15FFFFFF);
+        }
+        if (isFocused()) {
+            extractor.outline(x - 2, y - 2, getContentWidth() + 4, getContentHeight() + 4, 0x80FFFFFF);
+        }
+
         int textX = x + 35;
         extractor.textRenderer().accept(textX, y + 4, title);
         if (subtitle != null) {
@@ -72,13 +79,13 @@ public class FolderListEntry extends WorldSelectionList.Entry {
     }
 
     @Override
-    public boolean mouseClicked(MouseButtonEvent event, boolean isHovered) {
-        if (event.button() == 0 && isHovered) {
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        if (event.button() == 0) {
             this.minecraft.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F));
             onOpen.run();
             return true;
         }
-        return false;
+        return super.mouseClicked(event, doubleClick);
     }
 
     @Override

@@ -16,6 +16,7 @@ import net.minecraft.world.level.storage.LevelSummary;
 
 import java.io.Reader;
 import java.io.Writer;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -91,10 +92,28 @@ public class WorldBrowserRegistry {
         }
     }
 
+    public static String normalizePathKey(Path path) {
+        if (path == null) return "";
+        String s = path.toAbsolutePath().normalize().toString();
+        if (System.getProperty("os.name", "").toLowerCase().contains("win")) {
+            s = s.toLowerCase();
+        }
+        return s;
+    }
+
+    public static String normalizePathKey(String pathStr) {
+        if (pathStr == null || pathStr.isBlank()) return "";
+        try {
+            return normalizePathKey(Path.of(pathStr));
+        } catch (Exception e) {
+            return pathStr.trim().toLowerCase();
+        }
+    }
+
     private void initNavigationState() {
         // External world shortcuts are strictly profile-local
         if (Files.exists(LOCAL_CONFIG_PATH)) {
-            try (Reader reader = Files.newBufferedReader(LOCAL_CONFIG_PATH)) {
+            try (Reader reader = Files.newBufferedReader(LOCAL_CONFIG_PATH, StandardCharsets.UTF_8)) {
                 JsonObject json = JsonParser.parseReader(reader).getAsJsonObject();
 
                 recentExternalWorldPaths.clear();
@@ -126,7 +145,7 @@ public class WorldBrowserRegistry {
 
         // Read global state if local configuration did not provide it
         if (confirmedIncompatibleWorldPaths.isEmpty() && Files.exists(GLOBAL_CONFIG_PATH)) {
-            try (Reader reader = Files.newBufferedReader(GLOBAL_CONFIG_PATH)) {
+            try (Reader reader = Files.newBufferedReader(GLOBAL_CONFIG_PATH, StandardCharsets.UTF_8)) {
                 JsonObject json = JsonParser.parseReader(reader).getAsJsonObject();
                 if (json.has("confirmedIncompatibleWorlds")) {
                     JsonArray arr = json.getAsJsonArray("confirmedIncompatibleWorlds");
@@ -183,7 +202,7 @@ public class WorldBrowserRegistry {
                 if (LOCAL_CONFIG_PATH.getParent() != null) {
                     Files.createDirectories(LOCAL_CONFIG_PATH.getParent());
                 }
-                try (Writer writer = Files.newBufferedWriter(LOCAL_CONFIG_PATH)) {
+                try (Writer writer = Files.newBufferedWriter(LOCAL_CONFIG_PATH, StandardCharsets.UTF_8)) {
                     GSON.toJson(localJson, writer);
                 }
             } catch (Exception ignored) {
@@ -211,7 +230,7 @@ public class WorldBrowserRegistry {
                 if (GLOBAL_CONFIG_PATH.getParent() != null) {
                     Files.createDirectories(GLOBAL_CONFIG_PATH.getParent());
                 }
-                try (Writer writer = Files.newBufferedWriter(GLOBAL_CONFIG_PATH)) {
+                try (Writer writer = Files.newBufferedWriter(GLOBAL_CONFIG_PATH, StandardCharsets.UTF_8)) {
                     GSON.toJson(globalJson, writer);
                 }
             } catch (Exception ignored) {
@@ -226,6 +245,12 @@ public class WorldBrowserRegistry {
         RegisteredWorld rw = registeredWorldsById.get(levelId);
         if (rw != null) {
             return rw.worldDir();
+        }
+        String key = normalizePathKey(levelId);
+        for (Map.Entry<String, RegisteredWorld> entry : registeredWorldsById.entrySet()) {
+            if (normalizePathKey(entry.getKey()).equals(key)) {
+                return entry.getValue().worldDir();
+            }
         }
         return null;
     }
@@ -255,11 +280,14 @@ public class WorldBrowserRegistry {
         Path savesDir = profile.getSavesDir();
 
         if (worldsByProfileKey.containsKey(key)) {
-            // Re-validate cache against disk to detect created or deleted worlds
-            Set<String> onDisk = listWorldDirs(savesDir);
+            // Re-validate cache against disk to detect created, deleted, or modified worlds
+            Map<String, Long> onDisk = listWorldDirsWithMtime(savesDir);
             List<WrappedLevelSummary> cached = worldsByProfileKey.get(key);
             boolean stale = cached.size() != onDisk.size()
-                    || cached.stream().anyMatch(w -> !onDisk.contains(w.getOriginal().getLevelId()));
+                    || cached.stream().anyMatch(w -> {
+                        Long mtime = onDisk.get(w.getOriginal().getLevelId());
+                        return mtime == null || Math.abs(mtime - w.getLastPlayed()) > 2000;
+                    });
             if (!stale) {
                 profile.setCachedWorldCount(cached.size());
                 return cached;
@@ -311,6 +339,7 @@ public class WorldBrowserRegistry {
                         registeredWorldsById.putIfAbsent(rawId, reg);
                     }
                     registeredWorldsById.putIfAbsent(worldDir.toAbsolutePath().normalize().toString(), reg);
+                    registeredWorldsById.putIfAbsent(normalizePathKey(worldDir), reg);
 
                     profileWorlds.add(wrapped);
                 }
@@ -329,13 +358,18 @@ public class WorldBrowserRegistry {
         recentExternalWorldPaths.removeIf(p -> !Files.exists(Path.of(p)));
     }
 
-    private static Set<String> listWorldDirs(Path savesDir) {
-        Set<String> dirs = new HashSet<>();
+    private static Map<String, Long> listWorldDirsWithMtime(Path savesDir) {
+        Map<String, Long> dirs = new HashMap<>();
         if (savesDir == null || !Files.isDirectory(savesDir)) return dirs;
         try (java.nio.file.DirectoryStream<Path> stream = Files.newDirectoryStream(savesDir)) {
             for (Path p : stream) {
-                if (Files.isDirectory(p) && Files.exists(p.resolve("level.dat"))) {
-                    dirs.add(p.getFileName().toString());
+                Path levelDat = p.resolve("level.dat");
+                if (Files.isDirectory(p) && Files.exists(levelDat)) {
+                    try {
+                        dirs.put(p.getFileName().toString(), Files.getLastModifiedTime(levelDat).toMillis());
+                    } catch (Exception ignored) {
+                        dirs.put(p.getFileName().toString(), 0L);
+                    }
                 }
             }
         } catch (Exception ignored) {
@@ -399,7 +433,8 @@ public class WorldBrowserRegistry {
         hasUserClearedRecents = false;
         Path normalized = worldDir.toAbsolutePath().normalize();
         String pathStr = normalized.toString();
-        recentExternalWorldPaths.remove(pathStr);
+        String pathKey = normalizePathKey(normalized);
+        recentExternalWorldPaths.removeIf(p -> normalizePathKey(p).equals(pathKey));
         recentExternalWorldPaths.add(0, pathStr);
         while (recentExternalWorldPaths.size() > 20) {
             recentExternalWorldPaths.remove(recentExternalWorldPaths.size() - 1);
@@ -415,11 +450,14 @@ public class WorldBrowserRegistry {
 
     public synchronized boolean isWorldCompatibilityConfirmed(Path worldDir) {
         if (worldDir == null) return false;
-        return confirmedIncompatibleWorldPaths.contains(worldDir.toAbsolutePath().normalize().toString());
+        String key = normalizePathKey(worldDir);
+        return confirmedIncompatibleWorldPaths.stream().anyMatch(p -> normalizePathKey(p).equals(key));
     }
 
     public synchronized void confirmIncompatibleWorld(Path worldDir) {
         if (worldDir == null) return;
+        String key = normalizePathKey(worldDir);
+        confirmedIncompatibleWorldPaths.removeIf(p -> normalizePathKey(p).equals(key));
         confirmedIncompatibleWorldPaths.add(worldDir.toAbsolutePath().normalize().toString());
         saveConfig();
     }
@@ -432,8 +470,13 @@ public class WorldBrowserRegistry {
         if (worldDir == null || !Files.exists(worldDir)) return null;
         Path normalized = worldDir.toAbsolutePath().normalize();
         String normStr = normalized.toString();
+        String normKey = normalizePathKey(normalized);
 
         RegisteredWorld rw = registeredWorldsById.get(normStr);
+        if (rw != null && rw.summary() != null) {
+            return rw.summary();
+        }
+        rw = registeredWorldsById.get(normKey);
         if (rw != null && rw.summary() != null) {
             return rw.summary();
         }
@@ -442,10 +485,10 @@ public class WorldBrowserRegistry {
         for (ProfileInfo p : profiles) {
             if (p.getSavesDir() != null) {
                 Path savesNorm = p.getSavesDir().toAbsolutePath().normalize();
-                if (normalized.startsWith(savesNorm)) {
+                if (normKey.startsWith(normalizePathKey(savesNorm))) {
                     List<WrappedLevelSummary> list = getWorldsForProfile(p);
                     for (WrappedLevelSummary w : list) {
-                        if (w.getWorldDir().toAbsolutePath().normalize().equals(normalized)) {
+                        if (normalizePathKey(w.getWorldDir()).equals(normKey)) {
                             return w;
                         }
                     }
@@ -459,9 +502,9 @@ public class WorldBrowserRegistry {
         if (currentProfile == null) return Collections.emptyList();
 
         List<WrappedLevelSummary> result = new ArrayList<>(getWorldsForProfile(currentProfile));
-        Set<String> existingPaths = new HashSet<>();
+        Set<String> existingKeys = new HashSet<>();
         for (WrappedLevelSummary w : result) {
-            existingPaths.add(w.getWorldDir().toAbsolutePath().normalize().toString());
+            existingKeys.add(normalizePathKey(w.getWorldDir()));
         }
 
         List<String> toRemove = new ArrayList<>();
@@ -471,14 +514,14 @@ public class WorldBrowserRegistry {
                 toRemove.add(pathStr);
                 continue;
             }
-            if (existingPaths.contains(p.toAbsolutePath().normalize().toString())) {
+            if (existingKeys.contains(normalizePathKey(p))) {
                 continue;
             }
 
             WrappedLevelSummary summary = getOrLoadWorldByPath(p);
             if (summary != null) {
                 result.add(summary);
-                existingPaths.add(p.toAbsolutePath().normalize().toString());
+                existingKeys.add(normalizePathKey(p));
             }
         }
 

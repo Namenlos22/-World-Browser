@@ -94,7 +94,10 @@ public abstract class WorldListEntryMixin {
             }
 
             // 2. Mod compatibility check
-            ModCompatibilityResult compatResult = rw.summary().getCompatibilityResult();
+            ModCompatibilityResult compatResult = (rw.summary() != null) ? rw.summary().getCompatibilityResult() : null;
+            if (compatResult == null && rw.profile() != null && !rw.profile().isCurrent()) {
+                compatResult = com.example.worldbrowser.compat.ModCompatibilityChecker.checkCompatibility(worldDir, rw.profile());
+            }
             if (compatResult != null && !compatResult.isFullyCompatible()) {
                 boolean alreadyConfirmed = WorldBrowserRegistry.getInstance().isWorldCompatibilityConfirmed(worldDir);
                 if (!alreadyConfirmed) {
@@ -127,7 +130,7 @@ public abstract class WorldListEntryMixin {
     }
 
     @Inject(method = "mouseClicked", at = @At("HEAD"), cancellable = true)
-    private void worldbrowser_onMouseClicked(MouseButtonEvent event, boolean isHovered, CallbackInfoReturnable<Boolean> cir) {
+    private void worldbrowser_onMouseClicked(MouseButtonEvent event, boolean doubleClick, CallbackInfoReturnable<Boolean> cir) {
         if (event.button() != 0) {
             return;
         }
