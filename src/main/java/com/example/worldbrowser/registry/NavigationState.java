@@ -11,6 +11,21 @@ public class NavigationState {
         PROFILE
     }
 
+    private static long lastNavigationMillis = 0L;
+
+    public static synchronized boolean recordNavigation() {
+        long now = System.currentTimeMillis();
+        if (now - lastNavigationMillis < 350L) {
+            return false;
+        }
+        lastNavigationMillis = now;
+        return true;
+    }
+
+    public static synchronized boolean isNavigationCoolingDown() {
+        return (System.currentTimeMillis() - lastNavigationMillis) < 350L;
+    }
+
     private Level level = Level.ROOT;
     private LauncherType selectedLauncher = null;
     private ProfileInfo selectedProfile = null;

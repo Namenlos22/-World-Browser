@@ -5,6 +5,7 @@ import com.example.worldbrowser.gui.WorldCompatibilityWarningScreen;
 import com.example.worldbrowser.gui.WorldLockedWarningScreen;
 import com.example.worldbrowser.gui.WorldModListScreen;
 import com.example.worldbrowser.lock.WorldLockHelper;
+import com.example.worldbrowser.registry.NavigationState;
 import com.example.worldbrowser.registry.RegisteredWorld;
 import com.example.worldbrowser.registry.WorldBrowserRegistry;
 import com.example.worldbrowser.registry.WrappedLevelSummary;
@@ -131,6 +132,11 @@ public abstract class WorldListEntryMixin {
 
     @Inject(method = "mouseClicked", at = @At("HEAD"), cancellable = true)
     private void worldbrowser_onMouseClicked(MouseButtonEvent event, boolean doubleClick, CallbackInfoReturnable<Boolean> cir) {
+        if (NavigationState.isNavigationCoolingDown()) {
+            cir.setReturnValue(true);
+            return;
+        }
+
         if (event.button() != 0) {
             return;
         }

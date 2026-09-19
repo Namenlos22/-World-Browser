@@ -49,6 +49,7 @@ public abstract class SelectWorldScreenMixin extends Screen implements WorldBrow
                 0, 0, 20, 20,
                 FolderNavButton.Type.ROOT,
                 btn -> {
+                    if (!NavigationState.recordNavigation()) return;
                     WorldBrowserRegistry.getInstance().getNavigationState().goToRoot();
                     WorldBrowserRegistry.getInstance().saveConfig();
                     if (this.list != null) {
@@ -64,6 +65,7 @@ public abstract class SelectWorldScreenMixin extends Screen implements WorldBrow
                 0, 0, 20, 20,
                 FolderNavButton.Type.UP,
                 btn -> {
+                    if (!NavigationState.recordNavigation()) return;
                     WorldBrowserRegistry.getInstance().getNavigationState().goBack();
                     WorldBrowserRegistry.getInstance().saveConfig();
                     if (this.list != null) {
@@ -79,6 +81,7 @@ public abstract class SelectWorldScreenMixin extends Screen implements WorldBrow
                 0, 0, 20, 20,
                 FolderNavButton.Type.CURRENT,
                 btn -> {
+                    if (!NavigationState.recordNavigation()) return;
                     ProfileInfo cur = WorldBrowserRegistry.getInstance().getCurrentProfile();
                     if (cur != null) {
                         WorldBrowserRegistry.getInstance().getNavigationState().goToProfile(cur);
@@ -97,6 +100,7 @@ public abstract class SelectWorldScreenMixin extends Screen implements WorldBrow
                 0, 0, 20, 20,
                 FolderNavButton.Type.CLEAR_RECENTS,
                 btn -> {
+                    if (!NavigationState.recordNavigation()) return;
                     WorldBrowserRegistry.getInstance().clearRecentExternalWorlds();
                     if (this.list != null) {
                         this.list.setScrollAmount(0.0);

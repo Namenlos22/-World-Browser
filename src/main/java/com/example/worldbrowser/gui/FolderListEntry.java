@@ -7,6 +7,7 @@ import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
+import com.example.worldbrowser.registry.NavigationState;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.level.storage.LevelSummary;
 
@@ -81,7 +82,11 @@ public class FolderListEntry extends WorldSelectionList.Entry {
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
         if (event.button() == 0) {
+            if (!NavigationState.recordNavigation()) {
+                return true;
+            }
             this.minecraft.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F));
+            System.out.println("[WorldBrowser] Opened folder: " + title.getString());
             onOpen.run();
             return true;
         }
@@ -91,7 +96,11 @@ public class FolderListEntry extends WorldSelectionList.Entry {
     @Override
     public boolean keyPressed(KeyEvent event) {
         if (event.key() == KEY_ENTER || event.key() == KEY_KP_ENTER || event.key() == KEY_SPACE) {
+            if (!NavigationState.recordNavigation()) {
+                return true;
+            }
             this.minecraft.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F));
+            System.out.println("[WorldBrowser] Opened folder (key): " + title.getString());
             onOpen.run();
             return true;
         }
