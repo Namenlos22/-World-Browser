@@ -9,9 +9,11 @@ import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.level.storage.LevelSummary;
-import org.lwjgl.glfw.GLFW;
 
 public class FolderListEntry extends WorldSelectionList.Entry {
+    private static final int KEY_SPACE = 32;
+    private static final int KEY_ENTER = 257;
+    private static final int KEY_KP_ENTER = 335;
     private final Minecraft minecraft;
     private final Component title;
     private final Component subtitle;
@@ -81,7 +83,7 @@ public class FolderListEntry extends WorldSelectionList.Entry {
 
     @Override
     public boolean keyPressed(KeyEvent event) {
-        if (event.key() == GLFW.GLFW_KEY_ENTER || event.key() == GLFW.GLFW_KEY_KP_ENTER || event.key() == GLFW.GLFW_KEY_SPACE) {
+        if (event.key() == KEY_ENTER || event.key() == KEY_KP_ENTER || event.key() == KEY_SPACE) {
             this.minecraft.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F));
             onOpen.run();
             return true;
