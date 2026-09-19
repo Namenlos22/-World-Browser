@@ -10,9 +10,11 @@ import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.level.storage.LevelSummary;
-import org.lwjgl.glfw.GLFW;
 
 public class BackFolderEntry extends WorldSelectionList.Entry {
+    private static final int KEY_ENTER = 257;
+    private static final int KEY_KP_ENTER = 335;
+    private static final int KEY_BACKSPACE = 259;
     private final Minecraft minecraft;
     private final Component title;
     private final Runnable onBack;
@@ -80,7 +82,7 @@ public class BackFolderEntry extends WorldSelectionList.Entry {
 
     @Override
     public boolean keyPressed(KeyEvent event) {
-        if (event.key() == GLFW.GLFW_KEY_ENTER || event.key() == GLFW.GLFW_KEY_KP_ENTER || event.key() == GLFW.GLFW_KEY_BACKSPACE) {
+        if (event.key() == KEY_ENTER || event.key() == KEY_KP_ENTER || event.key() == KEY_BACKSPACE) {
             this.minecraft.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F));
             onBack.run();
             return true;
