@@ -1,6 +1,7 @@
 package com.example.worldbrowser.gui;
 
 import net.minecraft.ChatFormatting;
+import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.worldselection.WorldSelectionList;
@@ -13,9 +14,6 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.level.storage.LevelSummary;
 
 public class BackFolderEntry extends WorldSelectionList.Entry {
-    private static final int KEY_ENTER = 257;
-    private static final int KEY_KP_ENTER = 335;
-    private static final int KEY_BACKSPACE = 259;
     private final Minecraft minecraft;
     private final Component title;
     private final Runnable onBack;
@@ -79,13 +77,17 @@ public class BackFolderEntry extends WorldSelectionList.Entry {
     }
 
     @Override
+    public boolean shouldTakeFocusAfterInteraction() {
+        return false;
+    }
+
+    @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
-        if (event.button() == 0) {
+        if (event.button() == InputConstants.MOUSE_BUTTON_LEFT) {
             if (!NavigationState.recordNavigation()) {
                 return true;
             }
             this.minecraft.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F));
-            System.out.println("[WorldBrowser] Back navigation: " + title.getString());
             onBack.run();
             return true;
         }
@@ -94,12 +96,11 @@ public class BackFolderEntry extends WorldSelectionList.Entry {
 
     @Override
     public boolean keyPressed(KeyEvent event) {
-        if (event.key() == KEY_ENTER || event.key() == KEY_KP_ENTER || event.key() == KEY_BACKSPACE) {
+        if (event.isSelection() || event.key() == InputConstants.KEY_BACKSPACE) {
             if (!NavigationState.recordNavigation()) {
                 return true;
             }
             this.minecraft.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F));
-            System.out.println("[WorldBrowser] Back navigation (key): " + title.getString());
             onBack.run();
             return true;
         }

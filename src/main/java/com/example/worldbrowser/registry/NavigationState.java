@@ -11,19 +11,19 @@ public class NavigationState {
         PROFILE
     }
 
-    private static long lastNavigationMillis = 0L;
+    private static long lastNavigationNanos = System.nanoTime() - 350_000_000L;
 
     public static synchronized boolean recordNavigation() {
-        long now = System.currentTimeMillis();
-        if (now - lastNavigationMillis < 350L) {
+        long now = System.nanoTime();
+        if (now - lastNavigationNanos < 350_000_000L) {
             return false;
         }
-        lastNavigationMillis = now;
+        lastNavigationNanos = now;
         return true;
     }
 
     public static synchronized boolean isNavigationCoolingDown() {
-        return (System.currentTimeMillis() - lastNavigationMillis) < 350L;
+        return (System.nanoTime() - lastNavigationNanos) < 350_000_000L;
     }
 
     private Level level = Level.ROOT;

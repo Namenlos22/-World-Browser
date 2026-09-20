@@ -3,6 +3,26 @@ plugins {
 	id 'maven-publish'
 }
 
+// Keep generated Gradle output away from the IDE's locked legacy build tree.
+// The property also lets CI or an IDE use an explicitly isolated output
+// directory. If the default output already contains files, use a fresh sibling
+// for this invocation so a Windows file handle from the previous run cannot
+// block compileJava or clean.
+def requestedWorldBrowserBuildDir = providers.gradleProperty('worldbrowserBuildDir')
+def defaultWorldBrowserBuildDir = layout.projectDirectory.dir('../.worldbrowser-build-runtime')
+def worldBrowserBuildDir
+if (requestedWorldBrowserBuildDir.isPresent()) {
+	worldBrowserBuildDir = layout.projectDirectory.dir(requestedWorldBrowserBuildDir.get())
+} else if (defaultWorldBrowserBuildDir.asFile.exists()
+		&& defaultWorldBrowserBuildDir.asFile.listFiles()?.length > 0) {
+	worldBrowserBuildDir = layout.projectDirectory.dir(
+			"../.worldbrowser-build-runtime-${System.currentTimeMillis()}"
+	)
+} else {
+	worldBrowserBuildDir = defaultWorldBrowserBuildDir
+}
+layout.buildDirectory.set(worldBrowserBuildDir)
+
 repositories {
 	// Add repositories to retrieve artifacts from in here.
 	// You should only use this when depending on other mods because
@@ -32,6 +52,20 @@ processResources {
 
 tasks.withType(JavaCompile).configureEach {
 	it.options.release = 25
+	it.options.encoding = 'UTF-8'
+}
+
+// VS Code's Java language server can keep Gradle's default classes directory
+// open on Windows. Use a dedicated output directory so recompilation and the
+// runClient task do not fail while the IDE is indexing the project.
+tasks.named('compileJava', JavaCompile).configure {
+	destinationDirectory = layout.buildDirectory.dir('worldbrowser-classes/main')
+}
+
+sourceSets {
+	main {
+		output.classesDirs.setFrom(layout.buildDirectory.dir('worldbrowser-classes/main'))
+	}
 }
 
 java {

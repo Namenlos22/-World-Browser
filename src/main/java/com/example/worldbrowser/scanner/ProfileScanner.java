@@ -276,7 +276,7 @@ public class ProfileScanner {
             }
         } catch (Exception ignored) {
         }
-        return p1.toAbsolutePath().normalize().toString().equalsIgnoreCase(p2.toAbsolutePath().normalize().toString());
+        return p1.toAbsolutePath().normalize().equals(p2.toAbsolutePath().normalize());
     }
 
     private static void addUniqueDir(Set<Path> set, Path path) {

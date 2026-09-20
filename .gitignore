@@ -2,6 +2,9 @@
 
 .gradle/
 build/
+build-verify/
+.worldbrowser-build/
+.worldbrowser-build-*/
 out/
 classes/
 

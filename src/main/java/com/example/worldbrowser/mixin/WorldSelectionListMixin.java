@@ -74,7 +74,8 @@ public abstract class WorldSelectionListMixin extends ObjectSelectionList<WorldS
         NavigationState state = registry.getNavigationState();
         WorldSelectionList self = (WorldSelectionList) (Object) this;
 
-        String cleanFilter = filter != null ? filter.trim().toLowerCase() : "";
+
+        String cleanFilter = filter != null ? filter.trim().toLowerCase(java.util.Locale.ROOT) : "";
 
         // Filtered search across active level or entire launcher/registry
         if (!cleanFilter.isEmpty()) {
@@ -84,7 +85,7 @@ public abstract class WorldSelectionListMixin extends ObjectSelectionList<WorldS
                         ? registry.getWorldsForCurrentProfileWithRecents()
                         : registry.getWorldsForProfile(profile);
                 for (WrappedLevelSummary world : worlds) {
-                    if (world.getLevelName().toLowerCase().contains(cleanFilter) || world.getLevelId().toLowerCase().contains(cleanFilter)) {
+                    if (world.getLevelName().toLowerCase(java.util.Locale.ROOT).contains(cleanFilter) || world.getLevelId().toLowerCase(java.util.Locale.ROOT).contains(cleanFilter)) {
                         this.addEntry(self.new WorldListEntry(self, world));
                     }
                 }
@@ -94,7 +95,7 @@ public abstract class WorldSelectionListMixin extends ObjectSelectionList<WorldS
                         continue;
                     }
                     for (WrappedLevelSummary world : registry.getWorldsForProfile(profile)) {
-                        if (world.getLevelName().toLowerCase().contains(cleanFilter) || world.getLevelId().toLowerCase().contains(cleanFilter)) {
+                        if (world.getLevelName().toLowerCase(java.util.Locale.ROOT).contains(cleanFilter) || world.getLevelId().toLowerCase(java.util.Locale.ROOT).contains(cleanFilter)) {
                             this.addEntry(self.new WorldListEntry(self, world));
                         }
                     }
@@ -182,5 +183,6 @@ public abstract class WorldSelectionListMixin extends ObjectSelectionList<WorldS
                 this.addEntry(self.new WorldListEntry(self, world));
             }
         }
+
     }
 }

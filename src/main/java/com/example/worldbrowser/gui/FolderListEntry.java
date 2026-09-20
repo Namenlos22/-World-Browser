@@ -1,5 +1,6 @@
 package com.example.worldbrowser.gui;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.worldselection.WorldSelectionList;
@@ -12,9 +13,6 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.level.storage.LevelSummary;
 
 public class FolderListEntry extends WorldSelectionList.Entry {
-    private static final int KEY_SPACE = 32;
-    private static final int KEY_ENTER = 257;
-    private static final int KEY_KP_ENTER = 335;
     private final Minecraft minecraft;
     private final Component title;
     private final Component subtitle;
@@ -80,13 +78,17 @@ public class FolderListEntry extends WorldSelectionList.Entry {
     }
 
     @Override
+    public boolean shouldTakeFocusAfterInteraction() {
+        return false;
+    }
+
+    @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
-        if (event.button() == 0) {
+        if (event.button() == InputConstants.MOUSE_BUTTON_LEFT) {
             if (!NavigationState.recordNavigation()) {
                 return true;
             }
             this.minecraft.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F));
-            System.out.println("[WorldBrowser] Opened folder: " + title.getString());
             onOpen.run();
             return true;
         }
@@ -95,12 +97,11 @@ public class FolderListEntry extends WorldSelectionList.Entry {
 
     @Override
     public boolean keyPressed(KeyEvent event) {
-        if (event.key() == KEY_ENTER || event.key() == KEY_KP_ENTER || event.key() == KEY_SPACE) {
+        if (event.isSelection()) {
             if (!NavigationState.recordNavigation()) {
                 return true;
             }
             this.minecraft.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F));
-            System.out.println("[WorldBrowser] Opened folder (key): " + title.getString());
             onOpen.run();
             return true;
         }

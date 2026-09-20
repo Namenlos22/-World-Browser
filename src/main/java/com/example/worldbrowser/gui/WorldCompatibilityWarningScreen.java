@@ -81,7 +81,13 @@ public class WorldCompatibilityWarningScreen extends Screen {
                                     Component.empty());
                         }
                     } catch (Exception e) {
-                        WorldBrowser.LOGGER.error("Failed to create backup: {}", e.getMessage());
+                        WorldBrowser.LOGGER.error("Failed to create backup for {}", worldDir, e);
+                        if (this.minecraft != null && this.minecraft.gui != null) {
+                            SystemToast.add(this.minecraft.gui.toastManager(), SystemToast.SystemToastId.WORLD_BACKUP,
+                                    Component.translatable("worldbrowser.warning.compat.backup_failed", ""),
+                                    Component.literal(e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName()));
+                        }
+                        return;
                     }
                     onProceed.run();
                 }).bounds(centerX - 150, this.height - 85, 300, 20).build()

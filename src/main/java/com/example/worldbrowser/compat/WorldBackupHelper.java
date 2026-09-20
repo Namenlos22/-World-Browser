@@ -8,6 +8,7 @@ import java.io.InputStream;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.LinkOption;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.time.LocalDateTime;
@@ -37,8 +38,10 @@ public class WorldBackupHelper {
         Files.createDirectories(backupDir);
 
         String timestamp = LocalDateTime.now().format(FORMATTER);
-        String zipName = sanitizeFileName(worldName) + "_" + timestamp + ".zip";
-        Path zipFile = backupDir.resolve(zipName);
+        if (backupDir.toRealPath().startsWith(worldDir.toRealPath())) {
+            throw new IOException("Backup directory must be outside the world directory");
+        }
+        Path zipFile = Files.createTempFile(backupDir, sanitizeFileName(worldName) + "_" + timestamp + "_", ".zip");
 
         try (ZipOutputStream zos = new ZipOutputStream(Files.newOutputStream(zipFile))) {
             Files.walkFileTree(worldDir, new SimpleFileVisitor<>() {
@@ -48,21 +51,29 @@ public class WorldBackupHelper {
                     if (file.getFileName().toString().equals("session.lock")) {
                         return FileVisitResult.CONTINUE;
                     }
+                    if (!attrs.isRegularFile()) {
+                        throw new IOException("Cannot safely back up non-regular file: " + file);
+                    }
 
                     Path relative = worldDir.relativize(file);
                     ZipEntry entry = new ZipEntry(relative.toString().replace('\\', '/'));
                     entry.setTime(attrs.lastModifiedTime().toMillis());
                     zos.putNextEntry(entry);
 
-                    try (InputStream is = Files.newInputStream(file)) {
+                    try (InputStream is = Files.newInputStream(file, LinkOption.NOFOLLOW_LINKS)) {
                         is.transferTo(zos);
-                    } catch (Exception e) {
-                        WorldBrowser.LOGGER.warn("Failed to add file {} to backup: {}", file, e.getMessage());
                     }
                     zos.closeEntry();
                     return FileVisitResult.CONTINUE;
                 }
             });
+        } catch (IOException | RuntimeException e) {
+            try {
+                Files.deleteIfExists(zipFile);
+            } catch (IOException cleanupFailure) {
+                e.addSuppressed(cleanupFailure);
+            }
+            throw e;
         }
 
         WorldBrowser.LOGGER.info("World backup created: {}", zipFile);

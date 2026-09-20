@@ -93,7 +93,16 @@ Clone the repository and run:
 .\gradlew.bat build
 ```
 
-The remapped mod JAR will be created in `build/libs`.
+The remapped mod JAR is created in a generated `.worldbrowser-build-runtime*`
+directory next to the project. If the previous output is still open by an IDE,
+Gradle automatically selects a fresh sibling directory for the next run.
+
+If Windows reports that a build directory is in use by an IDE, use an isolated
+output directory for that invocation:
+
+```powershell
+.\gradlew.bat "-PworldbrowserBuildDir=.worldbrowser-build-local" runClient
+```
 
 ## Reporting issues
 
@@ -103,5 +112,3 @@ When reporting a problem, include:
 - the launcher and operating system,
 - relevant log output, and
 - steps that reproduce the issue.
-
-

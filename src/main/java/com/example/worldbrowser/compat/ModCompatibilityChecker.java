@@ -35,7 +35,7 @@ public class ModCompatibilityChecker {
             String id = meta.getId();
             String name = meta.getName();
             String version = meta.getVersion().getFriendlyString();
-            currentMods.put(id.toLowerCase(), new ModInfo(id, name, version, ""));
+            currentMods.put(id.toLowerCase(java.util.Locale.ROOT), new ModInfo(id, name, version, ""));
         }
         return currentMods;
     }
@@ -49,7 +49,7 @@ public class ModCompatibilityChecker {
 
         // Compare world mods against current mods
         for (ModInfo wm : worldMods) {
-            String lowerId = wm.getId().toLowerCase();
+            String lowerId = wm.getId().toLowerCase(java.util.Locale.ROOT);
             processedCurrentIds.add(lowerId);
 
             ModInfo currentMod = currentMods.get(lowerId);

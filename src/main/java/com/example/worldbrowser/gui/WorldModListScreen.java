@@ -57,7 +57,7 @@ public class WorldModListScreen extends Screen {
     }
 
     private void onSearchChanged(String query) {
-        populateList(query != null ? query.trim().toLowerCase() : "");
+        populateList(query != null ? query.trim().toLowerCase(java.util.Locale.ROOT) : "");
     }
 
     private void populateList(String filter) {
@@ -67,8 +67,8 @@ public class WorldModListScreen extends Screen {
         }
         for (ModCompatibilityEntry entry : result.getEntries()) {
             if (filter.isEmpty() 
-                    || entry.getModName().toLowerCase().contains(filter) 
-                    || entry.getModId().toLowerCase().contains(filter)) {
+                    || entry.getModName().toLowerCase(java.util.Locale.ROOT).contains(filter)
+                    || entry.getModId().toLowerCase(java.util.Locale.ROOT).contains(filter)) {
                 modSelectionList.addModEntry(new ModEntry(this.minecraft, entry));
             }
         }

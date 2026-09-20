@@ -10,6 +10,7 @@ import com.example.worldbrowser.registry.RegisteredWorld;
 import com.example.worldbrowser.registry.WorldBrowserRegistry;
 import com.example.worldbrowser.registry.WrappedLevelSummary;
 import net.minecraft.ChatFormatting;
+import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.StringWidget;
@@ -44,6 +45,30 @@ public abstract class WorldListEntryMixin {
     @Shadow @Final private StringWidget idAndLastPlayedText;
 
     @Shadow public abstract void joinWorld();
+
+    /**
+     * Vanilla deletes by LevelSummary#getLevelId(). External entries use a
+     * synthetic ID, so restore the selected entry's real directory mapping
+     * immediately before vanilla creates its LevelStorageAccess.
+     */
+    @Inject(method = "doDeleteWorld", at = @At("HEAD"))
+    private void worldbrowser_prepareDelete(CallbackInfo ci) {
+        if (summary instanceof WrappedLevelSummary wrapped) {
+            WorldBrowserRegistry.getInstance().ensureWorldRegistered(wrapped);
+        }
+    }
+
+    /**
+     * Refresh the browser state after vanilla has completed (or failed) its
+     * delete attempt. This removes stale entries and profile counts without
+     * bypassing Minecraft's lock and deletion implementation.
+     */
+    @Inject(method = "doDeleteWorld", at = @At("RETURN"))
+    private void worldbrowser_finishDelete(CallbackInfo ci) {
+        if (summary instanceof WrappedLevelSummary wrapped) {
+            WorldBrowserRegistry.getInstance().onWorldDeleteFinished(wrapped);
+        }
+    }
 
     // Display actual world directory name for external worlds instead of internal redirected ID
     @Inject(method = "<init>", at = @At("TAIL"))
@@ -137,7 +162,7 @@ public abstract class WorldListEntryMixin {
             return;
         }
 
-        if (event.button() != 0) {
+        if (event.button() != InputConstants.MOUSE_BUTTON_LEFT) {
             return;
         }
 

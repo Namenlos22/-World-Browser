@@ -4,7 +4,6 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
 
 public class ProfileInfo {
     private final LauncherType launcherType;
@@ -71,7 +70,7 @@ public class ProfileInfo {
     private volatile int cachedModCount = -1;
     private volatile int cachedWorldCount = -1;
 
-    public List<ModInfo> getMods() {
+    public synchronized List<ModInfo> getMods() {
         if (mods == null) {
             mods = com.example.worldbrowser.scanner.ModScanner.scanMods(modsDir);
             cachedModCount = mods.size();
@@ -79,7 +78,7 @@ public class ProfileInfo {
         return Collections.unmodifiableList(mods);
     }
 
-    public int getModCount() {
+    public synchronized int getModCount() {
         if (cachedModCount >= 0) {
             return cachedModCount;
         }
@@ -115,13 +114,13 @@ public class ProfileInfo {
         this.cachedModCount = count;
     }
 
-    public void setMods(List<ModInfo> mods) {
+    public synchronized void setMods(List<ModInfo> mods) {
         this.mods = mods != null ? new ArrayList<>(mods) : null;
         this.cachedModCount = this.mods != null ? this.mods.size() : -1;
     }
 
     public String getUniqueKey() {
-        return launcherType.getId() + ":" + profileId;
+        return launcherType.getId() + ":" + gameDir.toAbsolutePath().normalize();
     }
 
     @Override
@@ -129,11 +128,11 @@ public class ProfileInfo {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         ProfileInfo that = (ProfileInfo) o;
-        return launcherType == that.launcherType && Objects.equals(profileId, that.profileId);
+        return getUniqueKey().equals(that.getUniqueKey());
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(launcherType, profileId);
+        return getUniqueKey().hashCode();
     }
 }

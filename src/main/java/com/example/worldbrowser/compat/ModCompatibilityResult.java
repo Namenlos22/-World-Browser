@@ -13,7 +13,7 @@ public class ModCompatibilityResult {
     private final int compatibleCount;
 
     public ModCompatibilityResult(List<ModCompatibilityEntry> entries) {
-        this.entries = entries != null ? entries : Collections.emptyList();
+        this.entries = entries != null ? List.copyOf(entries) : Collections.emptyList();
         int missing = 0;
         int mismatch = 0;
         int compatible = 0;

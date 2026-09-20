@@ -18,10 +18,10 @@ import java.io.Reader;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -47,7 +47,7 @@ public class WorldBrowserRegistry {
     private boolean hasUserClearedRecents = false;
     private final Set<String> confirmedIncompatibleWorldPaths = new HashSet<>();
     private ProfileInfo currentProfile = null;
-    private boolean initialized = false;
+    private volatile boolean initialized = false;
 
     public static WorldBrowserRegistry getInstance() {
         return INSTANCE;
@@ -66,6 +66,14 @@ public class WorldBrowserRegistry {
     }
 
     public synchronized void reload() {
+        // Profile discovery is an initialization step.  A second reload while the
+        // menu is already open would invalidate the LevelSummary instances that
+        // are currently displayed and could make vanilla actions (especially
+        // delete) lose their external-world path mapping.
+        if (initialized) {
+            return;
+        }
+
         profiles.clear();
         registeredWorldsById.clear();
         worldsByProfileKey.clear();
@@ -79,10 +87,8 @@ public class WorldBrowserRegistry {
         WorldBrowser.LOGGER.info("WorldBrowserRegistry: loaded {} profiles.", profiles.size());
 
         // 2. Initialize navigation state and load local/global configurations
-        if (!initialized) {
-            initNavigationState();
-            initialized = true;
-        }
+        initNavigationState();
+        initialized = true;
     }
 
     public void prewarmProfileCounts() {
@@ -95,8 +101,8 @@ public class WorldBrowserRegistry {
     public static String normalizePathKey(Path path) {
         if (path == null) return "";
         String s = path.toAbsolutePath().normalize().toString();
-        if (System.getProperty("os.name", "").toLowerCase().contains("win")) {
-            s = s.toLowerCase();
+        if (System.getProperty("os.name", "").toLowerCase(java.util.Locale.ROOT).contains("win")) {
+            s = s.toLowerCase(java.util.Locale.ROOT);
         }
         return s;
     }
@@ -106,7 +112,31 @@ public class WorldBrowserRegistry {
         try {
             return normalizePathKey(Path.of(pathStr));
         } catch (Exception e) {
-            return pathStr.trim().toLowerCase();
+            return pathStr.trim().toLowerCase(java.util.Locale.ROOT);
+        }
+    }
+
+    /**
+     * A directory by itself is not a world. Vanilla can leave an empty
+     * directory or a session.lock behind after deleting a world, so every
+     * world lookup must require the actual level data file.
+     */
+    private static boolean hasWorldData(Path worldDir) {
+        if (worldDir == null) return false;
+        try {
+            return Files.isDirectory(worldDir)
+                    && Files.isRegularFile(worldDir.resolve("level.dat"));
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
+
+    private static boolean hasWorldData(String pathStr) {
+        if (pathStr == null || pathStr.isBlank()) return false;
+        try {
+            return hasWorldData(Path.of(pathStr));
+        } catch (InvalidPathException | NullPointerException ignored) {
+            return false;
         }
     }
 
@@ -159,6 +189,11 @@ public class WorldBrowserRegistry {
                 WorldBrowser.LOGGER.warn("Failed to read global configuration from {}: {}", GLOBAL_CONFIG_PATH, e.getMessage());
             }
         }
+
+        // Do not keep shortcuts for folders that are no longer complete worlds.
+        // This also cleans up stale entries left by an older mod version before
+        // the first list refresh is rendered.
+        recentExternalWorldPaths.removeIf(path -> !hasWorldData(path));
 
         // Start in current profile by default
         if (currentProfile != null) {
@@ -240,7 +275,7 @@ public class WorldBrowserRegistry {
         }
     }
 
-    public Path getWorldPath(String levelId) {
+    public synchronized Path getWorldPath(String levelId) {
         if (levelId == null) return null;
         RegisteredWorld rw = registeredWorldsById.get(levelId);
         if (rw != null) {
@@ -255,9 +290,71 @@ public class WorldBrowserRegistry {
         return null;
     }
 
-    public RegisteredWorld getRegisteredWorld(String levelId) {
+    public synchronized RegisteredWorld getRegisteredWorld(String levelId) {
         if (levelId == null) return null;
         return registeredWorldsById.get(levelId);
+    }
+
+    /**
+     * Reinstates the path mapping held by a displayed entry before Minecraft
+     * performs a vanilla operation on its (possibly synthetic) level ID.
+     */
+    public synchronized void ensureWorldRegistered(WrappedLevelSummary summary) {
+        if (summary == null || summary.getWorldDir() == null) {
+            return;
+        }
+
+        Path worldDir = summary.getWorldDir().toAbsolutePath().normalize();
+        RegisteredWorld registered = new RegisteredWorld(
+                summary.getLevelId(), summary, summary.getProfile(), worldDir
+        );
+
+        // The selected entry is authoritative here.  This also repairs a stale
+        // mapping left by a previous scan with the same synthetic ID.
+        registeredWorldsById.put(summary.getLevelId(), registered);
+        if (summary.getProfile() != null && summary.getProfile().isCurrent()) {
+            registeredWorldsById.put(summary.getOriginal().getLevelId(), registered);
+        }
+        registeredWorldsById.put(worldDir.toString(), registered);
+        registeredWorldsById.put(normalizePathKey(worldDir), registered);
+    }
+
+    /**
+     * Drops all cached references after the vanilla delete action returns.  The
+     * next list fill then reads the directory again and cannot resurrect a
+     * deleted entry from the old cache.
+     */
+    public synchronized void onWorldDeleteFinished(WrappedLevelSummary summary) {
+        if (summary == null || summary.getWorldDir() == null) {
+            return;
+        }
+
+        Path worldDir = summary.getWorldDir().toAbsolutePath().normalize();
+        String worldKey = normalizePathKey(worldDir);
+        registeredWorldsById.entrySet().removeIf(entry ->
+                entry.getValue() != null
+                        && worldKey.equals(normalizePathKey(entry.getValue().worldDir()))
+        );
+
+        ProfileInfo profile = summary.getProfile();
+        if (profile != null) {
+            worldsByProfileKey.remove(profile.getUniqueKey());
+            profile.setCachedWorldCount(-1);
+        }
+
+        boolean stillAWorld = hasWorldData(worldDir);
+        boolean configChanged = false;
+        if (!stillAWorld) {
+            configChanged |= recentExternalWorldPaths.removeIf(path ->
+                    worldKey.equals(normalizePathKey(path))
+            );
+            configChanged |= confirmedIncompatibleWorldPaths.removeIf(path ->
+                    worldKey.equals(normalizePathKey(path))
+            );
+        }
+        if (configChanged) {
+            saveConfig();
+        }
     }
 
     public List<ProfileInfo> getProfiles() {
@@ -280,14 +377,14 @@ public class WorldBrowserRegistry {
         Path savesDir = profile.getSavesDir();
 
         if (worldsByProfileKey.containsKey(key)) {
-            // Re-validate cache against disk to detect created, deleted, or modified worlds
-            Map<String, Long> onDisk = listWorldDirsWithMtime(savesDir);
+            // Re-validate cache against disk to detect created or deleted worlds.
+            // A level.dat modification time is not the same value as
+            // LevelSummary#getLastPlayed; comparing them made every cached list
+            // look stale and recreated its ID mappings on every screen refresh.
+            Set<String> onDisk = listWorldDirs(savesDir);
             List<WrappedLevelSummary> cached = worldsByProfileKey.get(key);
             boolean stale = cached.size() != onDisk.size()
-                    || cached.stream().anyMatch(w -> {
-                        Long mtime = onDisk.get(w.getOriginal().getLevelId());
-                        return mtime == null || Math.abs(mtime - w.getLastPlayed()) > 2000;
-                    });
+                    || cached.stream().anyMatch(w -> !onDisk.contains(w.getOriginal().getLevelId()));
             if (!stale) {
                 profile.setCachedWorldCount(cached.size());
                 return cached;
@@ -354,22 +451,19 @@ public class WorldBrowserRegistry {
     }
 
     private void unregisterMissingWorlds() {
-        registeredWorldsById.values().removeIf(rw -> !Files.exists(rw.worldDir().resolve("level.dat")));
-        recentExternalWorldPaths.removeIf(p -> !Files.exists(Path.of(p)));
+        registeredWorldsById.values().removeIf(rw -> rw == null || !hasWorldData(rw.worldDir()));
+        if (recentExternalWorldPaths.removeIf(p -> !hasWorldData(p))) {
+            saveConfig();
+        }
     }
 
-    private static Map<String, Long> listWorldDirsWithMtime(Path savesDir) {
-        Map<String, Long> dirs = new HashMap<>();
+    private static Set<String> listWorldDirs(Path savesDir) {
+        Set<String> dirs = new HashSet<>();
         if (savesDir == null || !Files.isDirectory(savesDir)) return dirs;
         try (java.nio.file.DirectoryStream<Path> stream = Files.newDirectoryStream(savesDir)) {
             for (Path p : stream) {
-                Path levelDat = p.resolve("level.dat");
-                if (Files.isDirectory(p) && Files.exists(levelDat)) {
-                    try {
-                        dirs.put(p.getFileName().toString(), Files.getLastModifiedTime(levelDat).toMillis());
-                    } catch (Exception ignored) {
-                        dirs.put(p.getFileName().toString(), 0L);
-                    }
+                if (hasWorldData(p)) {
+                    dirs.add(p.getFileName().toString());
                 }
             }
         } catch (Exception ignored) {
@@ -400,7 +494,7 @@ public class WorldBrowserRegistry {
         int count = 0;
         try (java.nio.file.DirectoryStream<Path> stream = Files.newDirectoryStream(savesDir)) {
             for (Path p : stream) {
-                if (Files.isDirectory(p) && Files.exists(p.resolve("level.dat"))) {
+                if (hasWorldData(p)) {
                     count++;
                 }
             }
@@ -430,6 +524,7 @@ public class WorldBrowserRegistry {
         if (profile != null && profile.isCurrent()) {
             return;
         }
+        if (!hasWorldData(worldDir)) return;
         hasUserClearedRecents = false;
         Path normalized = worldDir.toAbsolutePath().normalize();
         String pathStr = normalized.toString();
@@ -467,7 +562,7 @@ public class WorldBrowserRegistry {
     }
 
     public synchronized WrappedLevelSummary getOrLoadWorldByPath(Path worldDir) {
-        if (worldDir == null || !Files.exists(worldDir)) return null;
+        if (!hasWorldData(worldDir)) return null;
         Path normalized = worldDir.toAbsolutePath().normalize();
         String normStr = normalized.toString();
         String normKey = normalizePathKey(normalized);
@@ -509,8 +604,14 @@ public class WorldBrowserRegistry {
 
         List<String> toRemove = new ArrayList<>();
         for (String pathStr : recentExternalWorldPaths) {
-            Path p = Path.of(pathStr);
-            if (!Files.exists(p)) {
+            Path p;
+            try {
+                p = Path.of(pathStr);
+            } catch (InvalidPathException | NullPointerException ignored) {
+                toRemove.add(pathStr);
+                continue;
+            }
+            if (!hasWorldData(p)) {
                 toRemove.add(pathStr);
                 continue;
             }

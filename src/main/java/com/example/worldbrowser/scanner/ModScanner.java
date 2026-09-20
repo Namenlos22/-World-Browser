@@ -38,7 +38,7 @@ public class ModScanner {
                     // Fallback to filename
                     String fileName = jarPath.getFileName().toString();
                     String simpleName = fileName.endsWith(".jar") ? fileName.substring(0, fileName.length() - 4) : fileName;
-                    mods.add(new ModInfo(simpleName.toLowerCase(), simpleName, "unknown", fileName));
+                    mods.add(new ModInfo(simpleName.toLowerCase(java.util.Locale.ROOT), simpleName, "unknown", fileName));
                 }
             }
         } catch (Exception e) {
@@ -134,7 +134,7 @@ public class ModScanner {
 
         // Fallback: derive from filename
         String simpleName = fileName.endsWith(".jar") ? fileName.substring(0, fileName.length() - 4) : fileName;
-        return new ModInfo(simpleName.toLowerCase(), simpleName, "unknown", fileName);
+        return new ModInfo(simpleName.toLowerCase(java.util.Locale.ROOT), simpleName, "unknown", fileName);
     }
 
     private static String extractTomlValue(String line) {
